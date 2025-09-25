@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './src',
-  testMatch: '**/__tests__/medium/**/*.test.ts',
+  testMatch: '**/__tests__/large/**/*.test.ts',
   timeout: process.env.CI ? 120000 : 90000, // CI環境では2分、ローカルは1.5分
 
   fullyParallel: !process.env.CI, // CI環境では安定性優先、ローカルは並列
