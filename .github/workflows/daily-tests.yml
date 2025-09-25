@@ -59,24 +59,6 @@ jobs:
           timeout 300 bash -c 'until curl -s --proxy http://localhost:8888 https://httpbin.org/ip; do sleep 5; done'
           echo "✅ VPN proxy is responding"
 
-      - name: Verify Japan IP
-        run: |
-          echo "Testing proxy connectivity and IP location..."
-
-          # Test direct connection (should be US/GitHub)
-          echo "Direct connection IP:"
-          curl -s https://httpbin.org/ip || echo "❌ Direct connection failed"
-
-          # Test proxy connection (should be Japan)
-          echo "Proxy connection IP:"
-          export HTTP_PROXY=http://localhost:8888
-          export HTTPS_PROXY=http://localhost:8888
-          curl -s https://httpbin.org/ip || echo "❌ Proxy connection failed"
-
-          # Verify country
-          echo "Checking geolocation..."
-          LOCATION=$(curl -s https://ipinfo.io/json)
-          echo "Location info: $LOCATION"
 
       - name: Run Japan-restricted tests through VPN
         id: large-japan-tests
