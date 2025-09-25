@@ -25,14 +25,22 @@ jobs:
       - name: Run tests
         run: npm run test:small
 
+      - name: Load secrets from 1Password
+        id: load_secrets
+        uses: 1password/load-secrets-action@v3
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          FIREFOX_API_KEY: op://Web/uni/FIREFOX_API_KEY
+          FIREFOX_API_SECRET: op://Web/uni/FIREFOX_API_SECRET
+
       - name: Build and package Firefox extension
         run: npm run package:firefox
 
       - name: Sign and upload to Firefox Add-ons (AMO)
         run: |
           npx web-ext sign \
-            --api-key=${{ secrets.FIREFOX_API_KEY }} \
-            --api-secret=${{ secrets.FIREFOX_API_SECRET }} \
+            --api-key=${{ steps.load_secrets.outputs.FIREFOX_API_KEY }} \
+            --api-secret=${{ steps.load_secrets.outputs.FIREFOX_API_SECRET }} \
             --source-dir ./dist/firefox \
             --artifacts-dir ./dist \
             --channel listed
