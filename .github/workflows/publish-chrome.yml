@@ -25,14 +25,23 @@ jobs:
       - name: Run tests
         run: npm run test:small
 
+      - name: Load secrets from 1Password
+        id: load_secrets
+        uses: 1password/load-secrets-action@v3
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CHROME_CLIENT_ID: op://Web/uni/CHROME_CLIENT_ID
+          CHROME_CLIENT_SECRET: op://Web/uni/CHROME_CLIENT_SECRET
+          CHROME_REFRESH_TOKEN: op://Web/uni/CHROME_REFRESH_TOKEN
+
       - name: Build and package Chrome extension
         run: npm run package:chrome
 
       - name: Publish to Chrome Web Store
         uses: mobilefirstllc/cws-publish@latest
         with:
-          extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
-          client_id: ${{ secrets.CHROME_CLIENT_ID }}
-          client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-          refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension_id: jdihchpmnchcjigdmecmjieeanhcfbpm
+          client_id: ${{ steps.load_secrets.outputs.CHROME_CLIENT_ID }}
+          client_secret: ${{ steps.load_secrets.outputs.CHROME_CLIENT_SECRET }}
+          refresh_token: ${{ steps.load_secrets.outputs.CHROME_REFRESH_TOKEN }}
           zip_file: uni-chrome.zip

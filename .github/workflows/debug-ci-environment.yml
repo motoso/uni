@@ -70,16 +70,16 @@ jobs:
               echo "🔍 Running FANZA debug tests..."
               case "${{ github.event.inputs.test_type }}" in
                 "debug")
-                  npx playwright test src/__tests__/medium/monitoring/fanza-debug.test.ts --reporter=github
+                  npx playwright test src/__tests__/large/monitoring/fanza-debug.test.ts --reporter=github
                   ;;
                 "access-check")
-                  npx playwright test --grep "FANZA" src/__tests__/medium/monitoring/access-check.test.ts --reporter=github
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/access-check.test.ts --reporter=github
                   ;;
                 "spa-sites")
-                  npx playwright test --grep "FANZA" src/__tests__/medium/monitoring/spa-sites.test.ts --reporter=github
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/spa-sites.test.ts --reporter=github
                   ;;
                 "scraping-logic")
-                  npx playwright test --grep "FANZA" src/__tests__/medium/monitoring/scraping-logic.test.ts --reporter=github
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/scraping-logic.test.ts --reporter=github
                   ;;
               esac
               ;;
@@ -113,16 +113,16 @@ jobs:
               ;;
             "all-spa")
               echo "🔍 Running all SPA site tests..."
-              npx playwright test src/__tests__/medium/monitoring/spa-sites.test.ts --reporter=github
+              npx playwright test src/__tests__/large/monitoring/spa-sites.test.ts --reporter=github
               ;;
             "all-static")
               echo "🔍 Running all static site tests..."
-              npx playwright test src/__tests__/medium/monitoring/static-sites.test.ts --reporter=github
+              npx playwright test src/__tests__/large/monitoring/static-sites.test.ts --reporter=github
               ;;
             *)
               echo "❌ Unknown debug target: ${{ github.event.inputs.debug_target }}"
               echo "Running FANZA debug as fallback..."
-              npx playwright test src/__tests__/medium/monitoring/fanza-debug.test.ts --reporter=github
+              npx playwright test src/__tests__/large/monitoring/fanza-debug.test.ts --reporter=github
               ;;
           esac
         env:
