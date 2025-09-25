@@ -1,0 +1,13 @@
+dist/
+node_modules
+*.zip
+src/popup/popup.html
+
+# claude
+CLAUDE.local.md
+settings.local.json
+
+# playwright and testing
+playwright-report/
+test-results/
+debug-spa-timeout-*.png

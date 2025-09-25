@@ -1,0 +1,3 @@
+@theme {
+  --content: "./src/**/*.{html,js,jsx,ts,tsx}", "./dist/popup.html";
+}

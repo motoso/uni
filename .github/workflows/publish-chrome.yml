@@ -1,0 +1,38 @@
+name: Publish Chrome Extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish-chrome:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node with Volta
+        uses: volta-cli/action@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format check
+        run: npx prettier --check **/*.{ts,tsx,scss}
+
+      - name: Run tests
+        run: npm run test:small
+
+      - name: Build and package Chrome extension
+        run: npm run package:chrome
+
+      - name: Publish to Chrome Web Store
+        uses: mobilefirstllc/cws-publish@latest
+        with:
+          extension_id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client_id: ${{ secrets.CHROME_CLIENT_ID }}
+          client_secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh_token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          zip_file: uni-chrome.zip

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "jsx": "react",
+    "lib": ["es2017", "dom", "dom.iterable"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "dist/js",
+    "rootDir": "src",
+    "sourceMap": true,
+    "target": "es6"
+  },
+  "exclude": [
+    "playwright.config.ts",
+    "webpack.*.js",
+    "node_modules"
+  ]
+}

@@ -1,0 +1,7 @@
+should successfully run FANZA Video scraping logic
+should successfully run FANZA Doujin scraping logic
+should successfully run FANZA Books scraping logic
+should successfully run Amazon scraping logic - Amazon \(English\)
+should successfully run Amazon scraping logic - Amazon \(Japanese\)
+should successfully run DLsiteBooks scraping logic
+should successfully run DLsiteManiax scraping logic

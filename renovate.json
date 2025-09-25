@@ -1,0 +1,25 @@
+{
+  "extends": ["config:recommended", ":timezone(Asia/Tokyo)"],
+  "pin": {
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "automerge": true,
+      "major": {
+        "automerge": false
+      },
+      "matchPackageNames": ["/^@types//"]
+    },
+    {
+      "groupName": "linters",
+      "extends": ["packages:linters"],
+      "matchPackageNames": ["prettier", "/^@typescript-eslint//"]
+    }
+  ]
+}
