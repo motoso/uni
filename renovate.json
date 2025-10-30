@@ -15,9 +15,9 @@
     },
     {
       "description": "Auto-merge minor updates for @types packages",
-      "matchPackagePatterns": ["^@types/"],
       "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true
+      "automerge": true,
+      "matchPackageNames": ["/^@types//"]
     },
     {
       "description": "Disable auto-merge for major updates",
@@ -60,7 +60,12 @@
     {
       "description": "Group React packages",
       "groupName": "React",
-      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ]
     },
     {
       "description": "Group Tailwind CSS packages",
