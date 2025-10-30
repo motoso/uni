@@ -422,7 +422,7 @@ export const staticSites: SiteConfig[] = [
     ],
     isStatic: true,
     skipFirefox: false,
-    requiresJapanIP: false,
+    requiresJapanIP: true, // Geographic restriction: returns "product not found" from non-Japan IPs
   },
   {
     service: "Surugaya",
