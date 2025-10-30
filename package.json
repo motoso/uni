@@ -68,9 +68,9 @@
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },
-  "packageManager": "npm@11.6.0",
+  "packageManager": "npm@11.6.2",
   "volta": {
     "node": "22.19.0",
-    "npm": "11.6.0"
+    "npm": "11.6.2"
   }
 }
