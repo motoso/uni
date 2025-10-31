@@ -5,14 +5,11 @@ import { FanzaBooksScrapedData } from './types';
  * This function contains the core scraping logic without any UI dependencies
  */
 export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData | null {
-  // メインテーブル取得 - 複数のセレクターを試行
-  const mainTable = document.querySelector(".css-1omcat5") ||
-                    document.querySelector("dl");
-  const dts = mainTable?.querySelectorAll("dt");
-  const dds = mainTable?.querySelectorAll("dd");
+  // 全てのdl要素を取得（2024年10月時点のDOM構造では各フィールドが別々のdlに分かれている）
+  const dlElements = document.querySelectorAll("dl");
 
-  if (!mainTable || !dts || !dds) {
-    console.error("Main table not found");
+  if (!dlElements || dlElements.length === 0) {
+    console.error("No dl elements found");
     return null;
   }
 
@@ -42,11 +39,14 @@ export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData 
     return dd.textContent?.trim() || "";
   };
 
-  dts.forEach((dt, i) => {
-    const keyText = dt.textContent?.trim() || "";
-    const dd = dds[i];
-    if (!dd) return;
+  // 全てのdl要素を走査
+  dlElements.forEach((dl) => {
+    const dt = dl.querySelector("dt");
+    const dd = dl.querySelector("dd");
 
+    if (!dt || !dd) return;
+
+    const keyText = dt.textContent?.trim() || "";
     const valueText = getValueText(dd);
 
     switch (keyText) {

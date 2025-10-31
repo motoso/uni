@@ -480,7 +480,7 @@ export const spaSites: SiteConfig[] = [
     service: "FANZA Books",
     url: "https://book.dmm.co.jp/product/4425627/b425aakkg00576/",
     selectors: [
-      ".css-1omcat5", // Specific Japanese content selector only
+      "h1", // Title element (site migrated from Emotion to styled-components)
       // Removed generic fallbacks - VPN ensures Japanese content consistency
     ],
     hasAgeVerification: true, // book.dmm.co.jp now requires age verification
