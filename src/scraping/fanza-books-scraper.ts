@@ -5,7 +5,7 @@ import { FanzaBooksScrapedData } from './types';
  * This function contains the core scraping logic without any UI dependencies
  */
 export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData | null {
-  // 全てのdl要素を取得（2024年10月時点のDOM構造では各フィールドが別々のdlに分かれている）
+  // 全てのdl要素を取得（2025年11月時点のDOM構造では各フィールドが別々のdlに分かれている）
   const dlElements = document.querySelectorAll("dl");
 
   if (!dlElements || dlElements.length === 0) {
