@@ -63,7 +63,7 @@
     "wext-manifest-webpack-plugin": "^1.4.1"
   },
   "dependencies": {
-    "dayjs": "1.11.18",
+    "dayjs": "1.11.19",
     "ky": "1.13.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
