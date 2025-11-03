@@ -180,6 +180,9 @@ test.describe('BookWalker Scraping Logic', () => {
     if (!siteConfig) return;
 
     await page.goto(siteConfig.url);
+    if (siteConfig.hasAgeVerification) {
+      await handleAgeVerification(page);
+    }
     await page.waitForLoadState('load');
 
     // 関数をページに注入
@@ -214,6 +217,9 @@ test.describe('DLsite Scraping Logic', () => {
     if (!siteConfig) return;
 
     await page.goto(siteConfig.url);
+    if (siteConfig.hasAgeVerification) {
+      await handleAgeVerification(page);
+    }
     await page.waitForLoadState('load');
 
     // 関数をページに注入
@@ -249,6 +255,9 @@ test.describe('DLsiteBooks Scraping Logic', () => {
     if (!siteConfig) return;
 
     await page.goto(siteConfig.url);
+    if (siteConfig.hasAgeVerification) {
+      await handleAgeVerification(page);
+    }
     await page.waitForLoadState('load');
 
     // 関数をページに注入
