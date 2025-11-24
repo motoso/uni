@@ -51,7 +51,17 @@ export async function handleAgeVerification(page: Page): Promise<void> {
 
       // 年齢認証ボタンを試行 (Japanese only - VPN ensures Japanese content)
       const ageCheckSelectors = [
-        // Japanese patterns only (VPN provides Japan IP for consistent content)
+        // English prompts (GitHub Actions runs from the US and surfaces these)
+        'text=Agree',
+        'text=I Agree',
+        'text=Yes',
+        'button:has-text("Agree")',
+        'button:has-text("I Agree")',
+        'button:has-text("Yes")',
+        'a:has-text("Agree")',
+        'a:has-text("I Agree")',
+        'a:has-text("Yes")',
+        // Japanese prompts (local debugging from Japan VPN keeps working)
         'text=はい',
         'button:has-text("はい")',
         'input[value="はい"]',
@@ -373,6 +383,7 @@ export const staticSites: SiteConfig[] = [
     isStatic: true,
     skipFirefox: false,
     requiresJapanIP: true,
+    hasAgeVerification: true,
   },
   {
     service: "DLsiteBooks",
@@ -386,6 +397,7 @@ export const staticSites: SiteConfig[] = [
     isStatic: true,
     skipFirefox: false,
     requiresJapanIP: true,
+    hasAgeVerification: true,
   },
   {
     service: "Melonbooks",
@@ -411,6 +423,7 @@ export const staticSites: SiteConfig[] = [
     isStatic: true,
     skipFirefox: false,
     requiresJapanIP: true,
+    hasAgeVerification: true,
   },
   {
     service: "Fc2ContentMarket",
