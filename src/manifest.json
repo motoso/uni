@@ -1,0 +1,166 @@
+{
+  "manifest_version": 3,
+  "name": "Uni",
+  "description": "Building your library on the Cosense",
+  "version": "2.1.4",
+  "__firefox__browser_specific_settings": {
+    "gecko": {
+      "id": "uni@motosono.dev",
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent"
+        ],
+        "optional": [
+          "technicalAndInteraction"
+        ]
+      }
+    },
+    "gecko_android": {}
+  },
+  "action": {
+    "default_icon": "icon16.png",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "__chrome__service_worker": "js/eventPage.js",
+    "__chrome__type": "module",
+    "__firefox__scripts": ["js/eventPage.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://book.dmm.co.jp/*"
+      ],
+      "js": [
+        "js/fanzaBooks.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dmm.co.jp/dc/doujin/-/detail/=/*"
+      ],
+      "js": [
+        "js/fanzaDoujin.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dmm.co.jp/digital/videoa/-/detail/=/*",
+        "https://video.dmm.co.jp/av/content/*"
+      ],
+      "js": [
+        "js/fanzaVideo.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://video.dmm.co.jp/anime/content/*"
+      ],
+      "js": [
+        "js/fanzaAnime.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dlsite.com/books/work/=/product_id/*"
+      ],
+      "js": [
+        "js/dlsite.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dlsite.com/maniax/work/=/product_id/*",
+        "https://www.dlsite.com/home/work/=/product_id/*",
+        "https://www.dlsite.com/girls/work/=/product_id/*",
+        "https://www.dlsite.com/aix/work/=/product_id/*"
+      ],
+      "js": [
+        "js/dlsiteManiax.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://ec.toranoana.jp/tora_r/ec/item/*",
+        "https://ecs.toranoana.jp/tora/ec/item/*"
+      ],
+      "js": [
+        "js/toranoana.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.melonbooks.co.jp/detail/detail.php*"
+      ],
+      "js": [
+        "js/melonbooks.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.amazon.co.jp/dp/*",
+        "https://www.amazon.co.jp/*/dp/*",
+        "https://www.amazon.co.jp/gp/product/*"
+      ],
+      "js": [
+        "js/amazon.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://bookwalker.jp/*"
+      ],
+      "js": [
+        "js/bookWalker.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://adult.contents.fc2.com/article/*"
+      ],
+      "js": [
+        "js/fc2ContentMarket.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.suruga-ya.jp/product/detail/*"
+      ],
+      "js": [
+        "js/surugaya.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dmm.co.jp/dc/doujin/-/basket/*"
+      ],
+      "js": [
+        "js/DMMBasket.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.dlsite.com/home/cart*",
+        "https://www.dlsite.com/maniax/cart*",
+        "https://www.dlsite.com/girls/cart*",
+        "https://www.dlsite.com/aix/cart*"
+      ],
+      "js": ["js/DLsiteCart.js"]
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "__chrome__permissions": [
+    "declarativeContent",
+    "storage"
+  ],
+  "__firefox__permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://scrapbox.io/api/*"
+  ]
+}

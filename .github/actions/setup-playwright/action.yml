@@ -1,0 +1,50 @@
+name: 'Setup Playwright'
+description: 'Setup Playwright with browser caching'
+inputs:
+  cache-key-suffix:
+    description: 'Additional suffix for cache key'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get installed Playwright version
+      id: playwright-version
+      shell: bash
+      run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').dependencies['@playwright/test'].version)")" >> $GITHUB_ENV
+
+    - name: Restore cache - Playwright browsers
+      uses: actions/cache/restore@v4
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
+
+    - name: Install Playwright browsers and OS dependencies
+      shell: bash
+      run: npx playwright install --with-deps
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+
+    - name: Install OS dependencies only (cache hit)
+      shell: bash
+      run: npx playwright install-deps
+      if: steps.playwright-cache.outputs.cache-hit == 'true'
+
+    - name: Save cache - Playwright browsers
+      if: always() && steps.playwright-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}${{ inputs.cache-key-suffix }}
+
+    - name: Verify Playwright installation
+      shell: bash
+      run: |
+        echo "=== Playwright Installation Verification ==="
+        echo "Cache hit: ${{ steps.playwright-cache.outputs.cache-hit }}"
+        echo "Playwright version: ${{ env.PLAYWRIGHT_VERSION }}"
+        echo "Cache key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}${{ inputs.cache-key-suffix }}"
+        npx playwright --version

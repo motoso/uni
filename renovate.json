@@ -1,0 +1,80 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":timezone(Asia/Tokyo)"],
+  "pin": {
+    "automerge": true
+  },
+  "schedule": ["before 3am on Monday"],
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "Auto-merge patch updates for stable packages (not 0.x)",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge minor updates for @types packages",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "matchPackageNames": ["/^@types//"]
+    },
+    {
+      "description": "Disable auto-merge for major updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Group linter packages",
+      "groupName": "linters",
+      "extends": ["packages:linters"],
+      "matchPackageNames": ["prettier"]
+    },
+    {
+      "description": "Group test packages",
+      "groupName": "test packages",
+      "matchPackageNames": [
+        "@playwright/test",
+        "@types/jest",
+        "jest",
+        "jest-webextension-mock",
+        "ts-jest"
+      ]
+    },
+    {
+      "description": "Group webpack packages",
+      "groupName": "webpack packages",
+      "matchPackageNames": [
+        "webpack",
+        "webpack-cli",
+        "webpack-merge",
+        "copy-webpack-plugin",
+        "html-webpack-plugin",
+        "ts-loader",
+        "css-loader",
+        "sass-loader",
+        "style-loader",
+        "postcss-loader"
+      ]
+    },
+    {
+      "description": "Group React packages",
+      "groupName": "React",
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ]
+    },
+    {
+      "description": "Group Tailwind CSS packages",
+      "groupName": "Tailwind CSS",
+      "matchPackageNames": [
+        "tailwindcss",
+        "@tailwindcss/cli",
+        "@tailwindcss/postcss"
+      ]
+    }
+  ]
+}

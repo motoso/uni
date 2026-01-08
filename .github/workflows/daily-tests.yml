@@ -1,0 +1,132 @@
+name: Daily Tests (Large & VPN)
+on:
+  schedule:
+    # Run daily at 1:00 AM JST (16:00 UTC)
+    - cron: '0 16 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  issues: write  # Required for creating issues on test failures
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  large-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: volta-cli/action@v4
+      - run: npm install
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
+
+      - name: Run Large Tests (Global Sites Only)
+        id: large-global-tests
+        run: npm run test:large:global
+        continue-on-error: false
+
+  vpn-tests:
+    runs-on: ubuntu-latest
+    services:
+      vpn:
+        image: qmcgaw/gluetun
+        options: >-
+          --cap-add=NET_ADMIN
+          --device /dev/net/tun
+        env:
+          VPN_SERVICE_PROVIDER: protonvpn
+          VPN_TYPE: wireguard
+          WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
+          SERVER_COUNTRIES: Japan
+          FREE_ONLY: "on"
+          HTTPPROXY: "on"
+          HTTPPROXY_STEALTH: "off"
+          HTTPPROXY_LOG: "on"
+        ports:
+          - 8888:8888  # HTTP proxy
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: volta-cli/action@v4
+      - run: npm install
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
+
+      - name: Wait for VPN connection
+        run: |
+          echo "Waiting for VPN service to be ready..."
+          timeout 300 bash -c 'until curl -s --proxy http://localhost:8888 https://httpbin.org/ip; do sleep 5; done'
+          echo "✅ VPN proxy is responding"
+
+
+      - name: Run Japan-restricted tests through VPN
+        id: large-japan-tests
+        run: |
+          # Configure HTTP proxy for the tests (use localhost due to GitHub Actions port mapping)
+          export HTTP_PROXY=http://localhost:8888
+          export HTTPS_PROXY=http://localhost:8888
+
+          # Run geographic-restricted tests requiring VPN (Japan IP)
+          npm run test:large:japan
+        env:
+          CI: true
+          SKIP_IP_INFO: true
+
+      - name: Parse test results and create detailed issue
+        if: failure() && (steps.large-global-tests.outcome == 'failure' || steps.large-japan-tests.outcome == 'failure')
+        run: |
+          echo "title=🚨 Daily Site Monitoring Test Failed" > issue.md
+          echo "body=## Test Failure Summary" >> issue.md
+          echo "" >> issue.md
+
+          # Check which test job failed
+          if [[ "${{ steps.large-global-tests.outcome }}" == "failure" ]]; then
+            echo "### ❌ Global Sites Test Failed" >> issue.md
+            echo "- Test command: \`npm run test:large:global\`" >> issue.md
+            echo "- Environment: Standard GitHub Actions (overseas IP)" >> issue.md
+            echo "" >> issue.md
+          fi
+
+          if [[ "${{ steps.large-japan-tests.outcome }}" == "failure" ]]; then
+            echo "### ❌ Japan-restricted Sites Test Failed" >> issue.md
+            echo "- Test command: \`npm run test:large:japan\`" >> issue.md
+            echo "- Environment: ProtonVPN (Japan IP)" >> issue.md
+            echo "" >> issue.md
+          fi
+
+          echo "### Possible Causes:" >> issue.md
+          echo "1. **Website structure changes** - Sites may have updated their HTML/CSS selectors" >> issue.md
+          echo "2. **Temporary network issues** - Retry the workflow to confirm if it's persistent" >> issue.md
+          echo "3. **CDN/Regional differences** - Sites may serve different content based on location" >> issue.md
+          echo "4. **Rate limiting** - Too many requests may have been blocked" >> issue.md
+          echo "5. **VPN connectivity issues** - ProtonVPN connection may have failed (Japan-restricted tests only)" >> issue.md
+          echo "" >> issue.md
+
+          echo "### Investigation Steps:" >> issue.md
+          echo "1. Check the [Action Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for specific error messages" >> issue.md
+          echo "2. Review screenshots and videos in the Playwright report" >> issue.md
+          echo "3. Manually visit the failing sites to confirm structure changes" >> issue.md
+          echo "4. If network-related, re-run the workflow to confirm persistence" >> issue.md
+          echo "5. For Japan-restricted failures, verify VPN connection logs" >> issue.md
+          echo "" >> issue.md
+
+          echo "### Auto-Generated Details:" >> issue.md
+          echo "- **Workflow Run**: ${{ github.run_id }}" >> issue.md
+          echo "- **Timestamp**: $(date -u)" >> issue.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> issue.md
+          echo "- **Global Sites**: ${{ steps.large-global-tests.outcome }}" >> issue.md
+          echo "- **Japan Sites**: ${{ steps.large-japan-tests.outcome }}" >> issue.md
+
+      - name: Create issue
+        if: failure() && (steps.large-global-tests.outcome == 'failure' || steps.large-japan-tests.outcome == 'failure')
+        uses: peter-evans/create-issue-from-file@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          content-filepath: ./issue.md
+          labels: bug, monitoring
+          assignees: ${{ github.actor }}

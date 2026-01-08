@@ -1,0 +1,160 @@
+name: Debug CI Environment
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_target:
+        description: 'Debug target'
+        required: false
+        default: 'fanza'
+        type: choice
+        options:
+          - fanza
+          - amazon
+          - dlsite
+          - bookwalker
+          - melonbooks
+          - toranoana
+          - surugaya
+          - fc2
+          - all-spa
+          - all-static
+      test_pattern:
+        description: 'Custom test pattern (grep format, optional)'
+        required: false
+        default: ''
+        type: string
+      test_type:
+        description: 'Test type to run'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - access-check
+          - spa-sites
+          - static-sites
+          - scraping-logic
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - uses: volta-cli/action@v4
+      - run: npm install
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
+
+      - name: Run Debug Tests
+        id: debug-tests
+        run: |
+          # Custom test pattern takes precedence
+          if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
+            echo "🔍 Running custom test pattern: ${{ github.event.inputs.test_pattern }}"
+            npx playwright test --grep "${{ github.event.inputs.test_pattern }}" --reporter=github
+            exit 0
+          fi
+
+
+          # Handle specific targets
+          case "${{ github.event.inputs.debug_target }}" in
+            "fanza")
+              echo "🔍 Running FANZA debug tests..."
+              case "${{ github.event.inputs.test_type }}" in
+                "debug")
+                  npx playwright test src/__tests__/large/monitoring/fanza-debug.test.ts --reporter=github
+                  ;;
+                "access-check")
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/access-check.test.ts --reporter=github
+                  ;;
+                "spa-sites")
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/spa-sites.test.ts --reporter=github
+                  ;;
+                "scraping-logic")
+                  npx playwright test --grep "FANZA" src/__tests__/large/monitoring/scraping-logic.test.ts --reporter=github
+                  ;;
+              esac
+              ;;
+            "amazon")
+              echo "🔍 Running Amazon debug tests..."
+              npx playwright test --grep "Amazon.*English" --reporter=github
+              ;;
+            "dlsite")
+              echo "🔍 Running DLsite debug tests..."
+              npx playwright test --grep "DLsite" --reporter=github
+              ;;
+            "bookwalker")
+              echo "🔍 Running BookWalker debug tests..."
+              npx playwright test --grep "BookWalker" --reporter=github
+              ;;
+            "melonbooks")
+              echo "🔍 Running Melonbooks debug tests..."
+              npx playwright test --grep "Melonbooks" --reporter=github
+              ;;
+            "toranoana")
+              echo "🔍 Running Toranoana debug tests..."
+              npx playwright test --grep "Toranoana" --reporter=github
+              ;;
+            "surugaya")
+              echo "🔍 Running Surugaya debug tests..."
+              npx playwright test --grep "Surugaya" --reporter=github
+              ;;
+            "fc2")
+              echo "🔍 Running FC2 debug tests..."
+              npx playwright test --grep "Fc2ContentMarket" --reporter=github
+              ;;
+            "all-spa")
+              echo "🔍 Running all SPA site tests..."
+              npx playwright test src/__tests__/large/monitoring/spa-sites.test.ts --reporter=github
+              ;;
+            "all-static")
+              echo "🔍 Running all static site tests..."
+              npx playwright test src/__tests__/large/monitoring/static-sites.test.ts --reporter=github
+              ;;
+            *)
+              echo "❌ Unknown debug target: ${{ github.event.inputs.debug_target }}"
+              echo "Running FANZA debug as fallback..."
+              npx playwright test src/__tests__/large/monitoring/fanza-debug.test.ts --reporter=github
+              ;;
+          esac
+        env:
+          CI: true
+
+      - name: Environment Info Summary
+        if: always()
+        run: |
+          echo "## 🔍 Debug CI Environment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Debug Target**: ${{ github.event.inputs.debug_target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Type**: ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CI Environment**: GitHub Actions (Ubuntu Latest)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node Version**: $(node --version)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Playwright Version**: ${{ env.PLAYWRIGHT_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Geographic Location" >> $GITHUB_STEP_SUMMARY
+          echo "- **Expected IP Location**: Wyoming, US (Microsoft Corporation)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Content Language**: English (for FANZA sites)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Age Verification**: English buttons (I Agree, Agree, Yes)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "Check the action logs for detailed DOM analysis and debugging output." >> $GITHUB_STEP_SUMMARY
+          echo "Look for sections marked with 🔍, 📊, 🔘, and 🎯 for key debugging information." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: debug-screenshots
+          path: |
+            debug-*.png
+            test-results/
+          retention-days: 7

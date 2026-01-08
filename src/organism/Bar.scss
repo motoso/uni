@@ -1,0 +1,67 @@
+@use "sass:color";
+
+$primary-color: white;
+$alert-color: #ee4d5c;
+$create-page-color: #61b8e8;
+
+// Chrome applies an 8px margin by default (gross).
+// これを有効にすると普通のサイトの見え方にも影響する
+//body {
+//    margin: 0px;
+//}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+html {
+    box-sizing: border-box;
+}
+
+.message {
+    color: $primary-color;
+    font-size: 20px;
+    flex-direction: row;
+}
+
+.bar {
+    flex-direction: column; // 縦に並んでほしい
+    display: flex;
+    align-items: center; // cross axisに対して中央揃えにする
+    justify-content: center; // 主軸に対して中央揃えにする
+    width: 100vw;
+    margin: 0 calc(50% - 50vw);
+    height: 60px;
+    //padding: 10px;
+    line-height: 1.5; // emにすると崩れることがある（Amazon）
+}
+.alert {
+    background: $alert-color;
+    // ページを作るボタンが存在するのて、少し高さを確保
+    height: 100px;
+
+    .link {
+        font-size: 15px;
+        a {
+            color: color.adjust($alert-color, $lightness: 20%);
+        }
+        a:hover {
+            color: $primary-color;
+        }
+    }
+}
+.createPage {
+    background: $create-page-color;
+
+    .link {
+        font-size: 15px;
+        a {
+            color: color.adjust($create-page-color, $lightness: 20%);
+        }
+        a:hover {
+            color: $primary-color;
+        }
+    }
+}
