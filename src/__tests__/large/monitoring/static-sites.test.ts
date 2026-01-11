@@ -32,9 +32,11 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
 
-      // 各セレクタの存在確認
+      // 各セレクタの存在確認 (動的DOM生成を考慮して待機)
       for (const selector of selectors) {
         try {
+          // 動的に生成される可能性のある要素を待機
+          await page.waitForSelector(selector, { timeout: 10000, state: 'attached' });
           const element = page.locator(selector);
           const count = await element.count();
           expect(count).toBeGreaterThan(0);
@@ -65,9 +67,11 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
 
-      // 各セレクタの存在確認
+      // 各セレクタの存在確認 (動的DOM生成を考慮して待機)
       for (const selector of selectors) {
         try {
+          // 動的に生成される可能性のある要素を待機
+          await page.waitForSelector(selector, { timeout: 10000, state: 'attached' });
           const element = page.locator(selector);
           const count = await element.count();
           expect(count).toBeGreaterThan(0);
