@@ -4,6 +4,7 @@ import {
   performHealthCheck,
   handleAgeVerification,
   waitForSPAContent,
+  waitForStaticContent,
   insertionTargets
 } from './shared';
 
@@ -32,11 +33,12 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
 
-      // 各セレクタの存在確認 (動的DOM生成を考慮して待機)
+      // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
+      await waitForStaticContent(page, selectors);
+
+      // 各セレクタの存在確認
       for (const selector of selectors) {
         try {
-          // 動的に生成される可能性のある要素を待機
-          await page.waitForSelector(selector, { timeout: 10000, state: 'attached' });
           const element = page.locator(selector);
           const count = await element.count();
           expect(count).toBeGreaterThan(0);
@@ -67,11 +69,12 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
 
-      // 各セレクタの存在確認 (動的DOM生成を考慮して待機)
+      // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
+      await waitForStaticContent(page, selectors);
+
+      // 各セレクタの存在確認
       for (const selector of selectors) {
         try {
-          // 動的に生成される可能性のある要素を待機
-          await page.waitForSelector(selector, { timeout: 10000, state: 'attached' });
           const element = page.locator(selector);
           const count = await element.count();
           expect(count).toBeGreaterThan(0);
@@ -101,7 +104,8 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
         for (const selector of selectors) {
           try {
-            // 動的に生成される可能性のある要素を待機
+            // 動的に生成される可能性のある要素を待機 (例: Amazon #navbar)
+            // 複数のfallback セレクターを試すため、個別に待機
             await page.waitForSelector(selector.trim(), { timeout: 10000, state: 'attached' });
             const element = page.locator(selector.trim()).first();
             const count = await element.count();
