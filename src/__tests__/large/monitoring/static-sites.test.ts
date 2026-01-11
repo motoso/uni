@@ -104,13 +104,22 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
         for (const selector of selectors) {
           try {
+            const trimmedSelector = selector.trim();
+
+            // 高速チェック - 既に存在するか確認
+            const quickCheck = await page.locator(trimmedSelector).first().count().catch(() => 0);
+            if (quickCheck > 0) {
+              console.log(`✓ Found insertion target for ${service}: ${trimmedSelector}`);
+              found = true;
+              break;
+            }
+
             // 動的に生成される可能性のある要素を待機 (例: Amazon #navbar)
-            // 複数のfallback セレクターを試すため、個別に待機
-            await page.waitForSelector(selector.trim(), { timeout: 10000, state: 'attached' });
-            const element = page.locator(selector.trim()).first();
+            await page.waitForSelector(trimmedSelector, { timeout: 10000, state: 'attached' });
+            const element = page.locator(trimmedSelector).first();
             const count = await element.count();
             if (count > 0) {
-              console.log(`✓ Found insertion target for ${service}: ${selector.trim()}`);
+              console.log(`✓ Found insertion target for ${service}: ${trimmedSelector}`);
               found = true;
               break;
             }
