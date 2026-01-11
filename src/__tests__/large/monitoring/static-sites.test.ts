@@ -101,6 +101,8 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
         for (const selector of selectors) {
           try {
+            // 動的に生成される可能性のある要素を待機
+            await page.waitForSelector(selector.trim(), { timeout: 10000, state: 'attached' });
             const element = page.locator(selector.trim()).first();
             const count = await element.count();
             if (count > 0) {
