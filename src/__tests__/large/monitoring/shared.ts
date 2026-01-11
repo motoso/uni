@@ -157,6 +157,26 @@ export async function handleAgeVerification(page: Page): Promise<void> {
   }
 }
 
+// Static sites読み込み完了の待機 - 動的DOM生成対応
+export async function waitForStaticContent(page: Page, selectors: string[]): Promise<void> {
+  if (selectors.length === 0) return;
+
+  for (const selector of selectors) {
+    // まず高速チェック - 既に存在するか確認
+    const quickCheck = await page.locator(selector).count().catch(() => 0);
+    if (quickCheck > 0) {
+      continue;
+    }
+
+    // 一部のstatic sites (例: Amazon) は動的にDOM要素を生成する
+    // ページロード後もJavaScriptで要素を追加する場合があるため待機
+    await page.waitForSelector(selector, {
+      timeout: 10000,
+      state: 'attached'
+    });
+  }
+}
+
 // SPA読み込み完了の待機 - CI環境での年齢認証バイパス対応
 export async function waitForSPAContent(page: Page, selectors: string[]): Promise<void> {
   if (selectors.length === 0) return;

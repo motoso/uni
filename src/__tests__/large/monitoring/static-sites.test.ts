@@ -4,6 +4,7 @@ import {
   performHealthCheck,
   handleAgeVerification,
   waitForSPAContent,
+  waitForStaticContent,
   insertionTargets
 } from './shared';
 
@@ -31,6 +32,9 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
+
+      // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
+      await waitForStaticContent(page, selectors);
 
       // 各セレクタの存在確認
       for (const selector of selectors) {
@@ -65,6 +69,9 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Static sites can proceed immediately after load
       await page.waitForLoadState('load');
 
+      // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
+      await waitForStaticContent(page, selectors);
+
       // 各セレクタの存在確認
       for (const selector of selectors) {
         try {
@@ -97,10 +104,22 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
         for (const selector of selectors) {
           try {
-            const element = page.locator(selector.trim()).first();
+            const trimmedSelector = selector.trim();
+
+            // 高速チェック - 既に存在するか確認
+            const quickCheck = await page.locator(trimmedSelector).first().count().catch(() => 0);
+            if (quickCheck > 0) {
+              console.log(`✓ Found insertion target for ${service}: ${trimmedSelector}`);
+              found = true;
+              break;
+            }
+
+            // 動的に生成される可能性のある要素を待機 (例: Amazon #navbar)
+            await page.waitForSelector(trimmedSelector, { timeout: 10000, state: 'attached' });
+            const element = page.locator(trimmedSelector).first();
             const count = await element.count();
             if (count > 0) {
-              console.log(`✓ Found insertion target for ${service}: ${selector.trim()}`);
+              console.log(`✓ Found insertion target for ${service}: ${trimmedSelector}`);
               found = true;
               break;
             }
