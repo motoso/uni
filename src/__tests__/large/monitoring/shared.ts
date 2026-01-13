@@ -467,7 +467,7 @@ export const staticSites: SiteConfig[] = [
     ],
     isStatic: true,
     skipFirefox: false,
-    requiresJapanIP: false,
+    requiresJapanIP: true, // Cloudflare blocks non-Japan IPs with HTTP 403
   },
   {
     service: "Toranoana",
