@@ -6,6 +6,7 @@ src/popup/popup.html
 # claude
 CLAUDE.local.md
 settings.local.json
+.claude/
 
 # playwright and testing
 playwright-report/
