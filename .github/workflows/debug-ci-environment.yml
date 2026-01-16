@@ -85,7 +85,20 @@ jobs:
               ;;
             "amazon")
               echo "🔍 Running Amazon debug tests..."
-              npx playwright test --grep "Amazon.*English" --reporter=github
+              case "${{ github.event.inputs.test_type }}" in
+                "debug")
+                  npx playwright test src/__tests__/large/monitoring/amazon-debug.test.ts --reporter=github
+                  ;;
+                "access-check")
+                  npx playwright test --grep "Amazon" src/__tests__/large/monitoring/access-check.test.ts --reporter=github
+                  ;;
+                "static-sites")
+                  npx playwright test --grep "Amazon" src/__tests__/large/monitoring/static-sites.test.ts --reporter=github
+                  ;;
+                "scraping-logic")
+                  npx playwright test --grep "Amazon" src/__tests__/large/monitoring/scraping-logic.test.ts --reporter=github
+                  ;;
+              esac
               ;;
             "dlsite")
               echo "🔍 Running DLsite debug tests..."
