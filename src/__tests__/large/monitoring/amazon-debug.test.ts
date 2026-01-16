@@ -18,16 +18,17 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
   };
 
   test(`Debug DOM structure and selectors: ${amazonSite.name}`, async ({ page }) => {
-    const isCI = !!process.env.CI;
-
     console.log(`\n🔍 Debugging ${amazonSite.name}: ${amazonSite.url}`);
 
     try {
-      // 初期アクセス
+      // 初期アクセス（domcontentloadedで早期に解析開始）
       const response = await page.goto(amazonSite.url, {
-        waitUntil: 'networkidle',
+        waitUntil: 'domcontentloaded',
         timeout: 30000
       });
+
+      // 主要コンテナの読み込みを待機
+      await page.waitForSelector('body', { state: 'attached', timeout: 5000 }).catch(() => {});
 
       const status = response?.status() || 0;
       const finalUrl = page.url();
@@ -63,7 +64,11 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
             console.log(`   ❌ ${selector}: NOT FOUND`);
           }
         } catch (error) {
-          console.log(`   ❌ ${selector}: ERROR - ${error instanceof Error ? error.message : 'Unknown'}`);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.log(`   ❌ ${selector}: ERROR - ${errorMsg}`);
+          if (error instanceof Error && error.stack) {
+            console.log(`      Stack: ${error.stack.split('\n')[1]?.trim()}`);
+          }
         }
       }
 
@@ -122,9 +127,7 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
         '.detail-bullets',
         '#productDetails_feature_div',
         '#productDetails_techSpec_section_1',
-        '#productDetails_detailBullets_sections1',
-        '[id*="detail"]',
-        '[class*="detail"]'
+        '#productDetails_detailBullets_sections1'
       ];
 
       console.log(`\n   📍 Product Details Alternatives:`);
@@ -199,6 +202,18 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
         foundIndicators.forEach(indicator => console.log(`      - ${indicator}`));
       } else {
         console.log(`   ✅ No bot detection indicators found`);
+      }
+
+      // デバッグ用スクリーンショットを保存
+      console.log(`\n📸 SAVING DEBUG SCREENSHOT:`);
+      try {
+        await page.screenshot({
+          path: 'amazon-debug-screenshot.png',
+          fullPage: true
+        });
+        console.log(`   ✅ Screenshot saved: amazon-debug-screenshot.png`);
+      } catch (error) {
+        console.log(`   ⚠️ Failed to save screenshot: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
 
       // テストは常に成功（情報収集目的）
