@@ -22,7 +22,8 @@ export default defineConfig({
     actionTimeout: process.env.CI ? 30000 : 10000, // VPN環境では30秒
     // CI環境でのUser-Agent設定（サイトのブロック回避）
     userAgent: process.env.CI ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' : undefined,
-    // Amazon等のボット検出回避のための追加設定
+    // 日本語サイト全般のボット検出回避設定（全テストに適用）
+    // Amazon等のHeadless検出が厳しいサイトへの対応
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
     extraHTTPHeaders: {

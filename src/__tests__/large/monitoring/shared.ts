@@ -157,6 +157,11 @@ export async function handleAgeVerification(page: Page): Promise<void> {
   }
 }
 
+// ステルスモード設定の定数
+const STEALTH_RANDOM_DELAY_MIN = 500;  // ランダム待機の最小値（ms）
+const STEALTH_RANDOM_DELAY_MAX = 1500; // ランダム待機の最大値（ms）
+const STEALTH_STABILIZATION_DELAY = 2000; // 安定化待機時間（ms）
+
 // ステルスモード設定 - ボット検出回避
 export async function setupStealthMode(page: Page): Promise<void> {
   // JavaScript API偽装でHeadless検出を回避
@@ -173,15 +178,16 @@ export async function setupStealthMode(page: Page): Promise<void> {
 
     // Permissions API の偽装
     const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters: any) => (
+    window.navigator.permissions.query = ((parameters: PermissionDescriptor) => (
       parameters.name === 'notifications' ?
-        Promise.resolve({ state: 'denied' } as PermissionStatus) :
-        originalQuery(parameters)
-    );
+        Promise.resolve({ state: 'denied', onchange: null } as PermissionStatus) :
+        originalQuery.call(window.navigator.permissions, parameters)
+    )) as typeof originalQuery;
   });
 
   // 人間らしい動作パターン - ランダムな待機
-  await page.waitForTimeout(Math.random() * 1000 + 500);
+  const randomDelay = Math.random() * (STEALTH_RANDOM_DELAY_MAX - STEALTH_RANDOM_DELAY_MIN) + STEALTH_RANDOM_DELAY_MIN;
+  await page.waitForTimeout(randomDelay);
 }
 
 // Amazon専用のナビゲーション - ステルス設定込み
@@ -218,7 +224,7 @@ export async function navigateToAmazonWithStealth(page: Page, url: string): Prom
   }
 
   // 追加の安定化待機
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(STEALTH_STABILIZATION_DELAY);
 
   return { status };
 }

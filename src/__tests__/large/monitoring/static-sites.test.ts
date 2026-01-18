@@ -28,6 +28,11 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Amazon専用のステルス設定を適用
       if (service.includes('Amazon')) {
         await navigateToAmazonWithStealth(page, url);
+
+        // Amazonでも年齢認証が必要な場合は対応
+        if (hasAgeVerification) {
+          await handleAgeVerification(page);
+        }
       } else {
         await page.goto(url);
 
@@ -69,6 +74,11 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
       // Amazon専用のステルス設定を適用
       if (service.includes('Amazon')) {
         await navigateToAmazonWithStealth(page, url);
+
+        // Amazonでも年齢認証が必要な場合は対応
+        if (hasAgeVerification) {
+          await handleAgeVerification(page);
+        }
       } else {
         await page.goto(url);
 

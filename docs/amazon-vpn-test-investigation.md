@@ -211,11 +211,11 @@ await page.addInitScript(() => {
 
   // Permissions API の偽装
   const originalQuery = window.navigator.permissions.query;
-  window.navigator.permissions.query = (parameters: any) => (
+  window.navigator.permissions.query = ((parameters: PermissionDescriptor) => (
     parameters.name === 'notifications' ?
-      Promise.resolve({ state: Meteor.Notification.permission } as PermissionStatus) :
-      originalQuery(parameters)
-  );
+      Promise.resolve({ state: 'denied', onchange: null } as PermissionStatus) :
+      originalQuery.call(window.navigator.permissions, parameters)
+  )) as typeof originalQuery;
 });
 ```
 
