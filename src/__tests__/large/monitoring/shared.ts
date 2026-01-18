@@ -157,6 +157,72 @@ export async function handleAgeVerification(page: Page): Promise<void> {
   }
 }
 
+// ステルスモード設定 - ボット検出回避
+export async function setupStealthMode(page: Page): Promise<void> {
+  // JavaScript API偽装でHeadless検出を回避
+  await page.addInitScript(() => {
+    // navigator.webdriver を削除
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => false,
+    });
+
+    // Chrome runtime を追加（Headlessブラウザでは通常存在しない）
+    (window as any).chrome = {
+      runtime: {},
+    };
+
+    // Permissions API の偽装
+    const originalQuery = window.navigator.permissions.query;
+    window.navigator.permissions.query = (parameters: any) => (
+      parameters.name === 'notifications' ?
+        Promise.resolve({ state: 'denied' } as PermissionStatus) :
+        originalQuery(parameters)
+    );
+  });
+
+  // 人間らしい動作パターン - ランダムな待機
+  await page.waitForTimeout(Math.random() * 1000 + 500);
+}
+
+// Amazon専用のナビゲーション - ステルス設定込み
+export async function navigateToAmazonWithStealth(page: Page, url: string): Promise<{ status: number }> {
+  // ステルスモードを設定
+  await setupStealthMode(page);
+
+  // ページに移動（早期に解析開始）
+  const response = await page.goto(url, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000
+  });
+
+  const status = response?.status() || 0;
+
+  // 段階的な読み込み待機
+  await page.waitForLoadState('load');
+
+  // 人間らしいマウス移動のシミュレーション
+  try {
+    await page.mouse.move(100, 100);
+    await page.mouse.move(200, 200);
+  } catch (error) {
+    // マウス操作失敗は無視
+  }
+
+  // 軽いスクロール動作
+  try {
+    await page.evaluate(() => {
+      window.scrollBy(0, 100);
+    });
+  } catch (error) {
+    // スクロール失敗は無視
+  }
+
+  // 追加の安定化待機
+  await page.waitForTimeout(2000);
+
+  return { status };
+}
+
 // Static sites読み込み完了の待機 - 動的DOM生成対応
 export async function waitForStaticContent(page: Page, selectors: string[]): Promise<void> {
   if (selectors.length === 0) return;

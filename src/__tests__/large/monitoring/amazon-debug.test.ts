@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToAmazonWithStealth } from './shared';
 
 // CI環境でのAmazon日本語サイトのDOM構造デバッグ用テスト
 // 通常は無効化しているが、専用デバッグワークフローでは実行される
@@ -19,18 +20,11 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
 
   test(`Debug DOM structure and selectors: ${amazonSite.name}`, async ({ page }) => {
     console.log(`\n🔍 Debugging ${amazonSite.name}: ${amazonSite.url}`);
+    console.log(`🎭 Applying stealth mode to avoid bot detection...`);
 
     try {
-      // 初期アクセス（domcontentloadedで早期に解析開始）
-      const response = await page.goto(amazonSite.url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
-
-      // 主要コンテナの読み込みを待機
-      await page.waitForSelector('body', { state: 'attached', timeout: 5000 }).catch(() => {});
-
-      const status = response?.status() || 0;
+      // ステルスモードでアクセス
+      const { status } = await navigateToAmazonWithStealth(page, amazonSite.url);
       const finalUrl = page.url();
       const title = await page.title();
 
