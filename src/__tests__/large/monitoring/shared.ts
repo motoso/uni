@@ -162,7 +162,21 @@ const STEALTH_RANDOM_DELAY_MIN = 500;  // ランダム待機の最小値（ms）
 const STEALTH_RANDOM_DELAY_MAX = 1500; // ランダム待機の最大値（ms）
 const STEALTH_STABILIZATION_DELAY = 2000; // 安定化待機時間（ms）
 
-// ステルスモード設定 - ボット検出回避
+/**
+ * ステルスモード設定 - ボット検出回避
+ *
+ * @remarks
+ * 現在はamazon-debug.test.ts（通常無効化）でのみ使用されているが、
+ * 将来的に他の高度なボット検出を持つサイトへの対応に再利用可能なため保持。
+ *
+ * 実装されている回避技術:
+ * - navigator.webdriver の偽装
+ * - chrome.runtime の追加
+ * - Permissions API の偽装
+ * - ランダム待機による人間らしい動作パターン
+ *
+ * @see {@link docs/amazon-vpn-test-investigation.md} - Amazonでの検証結果と技術詳細
+ */
 export async function setupStealthMode(page: Page): Promise<void> {
   // JavaScript API偽装でHeadless検出を回避
   await page.addInitScript(() => {
@@ -190,7 +204,26 @@ export async function setupStealthMode(page: Page): Promise<void> {
   await page.waitForTimeout(randomDelay);
 }
 
-// Amazon専用のナビゲーション - ステルス設定込み
+/**
+ * ステルス設定込みのページナビゲーション
+ *
+ * @remarks
+ * 現在はamazon-debug.test.ts（通常無効化）でのみ使用されているが、
+ * 将来的に他の高度なボット検出を持つサイトへの対応に再利用可能なため保持。
+ *
+ * 実装されている回避動作:
+ * - ステルスモード設定（setupStealthMode）
+ * - 人間らしいマウス移動シミュレーション
+ * - スクロール動作
+ * - 安定化待機
+ *
+ * @param page - Playwrightのページオブジェクト
+ * @param url - アクセス先URL
+ * @returns HTTPステータスコード
+ *
+ * @see {@link setupStealthMode} - ボット検出回避の詳細
+ * @see {@link docs/amazon-vpn-test-investigation.md} - Amazonでの検証結果（CAPTCHA回避率0%）
+ */
 export async function navigateToAmazonWithStealth(page: Page, url: string): Promise<{ status: number }> {
   // ステルスモードを設定
   await setupStealthMode(page);
@@ -599,7 +632,7 @@ export const spaSites: SiteConfig[] = [
 export const insertionTargets = {
   'BookWalker': '.c-c-header',
   'Amazon (English)': '#navbar',
-  // 'Amazon (Japanese)': テスト対象から除外（ボット検出回避不可能）
+  // 'Amazon (Japanese)': テスト対象から除外（ボット検出回避不可能、詳細: docs/amazon-vpn-test-investigation.md）
   'DLsite': '#header',
   'DLsiteBooks': '#header',
   'Melonbooks': '#header_free_html',

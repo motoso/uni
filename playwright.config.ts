@@ -23,7 +23,8 @@ export default defineConfig({
     // CI環境でのUser-Agent設定（サイトのブロック回避）
     userAgent: process.env.CI ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' : undefined,
     // 日本語サイト全般のボット検出回避設定（全テストに適用）
-    // Amazon等のHeadless検出が厳しいサイトへの対応
+    // 対象: BookWalker, DLsite, FANZA, Melonbooks, Toranoana, Surugaya等の日本語ECサイト
+    // 日本在住ユーザーを模倣することで、地理的制限やボット検出を回避
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
     extraHTTPHeaders: {
