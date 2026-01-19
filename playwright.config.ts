@@ -21,7 +21,16 @@ export default defineConfig({
     navigationTimeout: process.env.CI ? 90000 : 30000, // VPN環境では1.5分
     actionTimeout: process.env.CI ? 30000 : 10000, // VPN環境では30秒
     // CI環境でのUser-Agent設定（サイトのブロック回避）
-    userAgent: process.env.CI ? 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' : undefined,
+    userAgent: process.env.CI ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' : undefined,
+    // 日本語サイト全般のボット検出回避設定（全テストに適用）
+    // 対象: BookWalker, DLsite, FANZA, Melonbooks, Toranoana, Surugaya等の日本語ECサイト
+    // 日本在住ユーザーを模倣することで、地理的制限やボット検出を回避
+    locale: 'ja-JP',
+    timezoneId: 'Asia/Tokyo',
+    extraHTTPHeaders: {
+      'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    },
   },
 
   projects: [
