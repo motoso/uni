@@ -338,3 +338,116 @@ if (service.includes('Amazon')) {
 - デバッグテスト実装: `src/__tests__/large/monitoring/amazon-debug.test.ts`
 - CI実行ログ: https://github.com/motoso/uni/actions/runs/21059430413
 - Playwright Stealth: https://playwright.dev/docs/emulation
+
+---
+
+## 実装結果と最終決定
+
+### ステルスモード実装と検証
+
+**実装日**: 2026-01-18
+
+#### 実装内容
+1. `setupStealthMode()` - JavaScript API偽装
+   - `navigator.webdriver`の削除
+   - `chrome.runtime`の追加
+   - Permissions APIの偽装
+   - ランダム待機の追加
+
+2. `navigateToAmazonWithStealth()` - Amazon専用ナビゲーション
+   - ステルスモード適用
+   - マウス移動シミュレーション
+   - スクロールシミュレーション
+   - 安定化待機（2秒）
+
+3. Playwright設定強化
+   - User-Agent更新（Chrome 131.0.0.0）
+   - ロケール/タイムゾーン設定（ja-JP/Asia/Tokyo）
+   - HTTPヘッダー追加
+
+#### 検証結果
+
+**通常CI環境テスト**（Run ID: 21115941960）
+- 環境: GitHub Actions (Wyoming, US)
+- 結果: ❌ **失敗 - CAPTCHA検出継続**
+- HTML長: 5,718文字（CAPTCHAページ）
+- 検出内容: `opfcaptcha.amazon.co.jp`
+
+**VPN環境テスト**（Run ID: 21115987687）
+- 環境: ProtonVPN経由（日本IP）
+- 結果: ❌ **失敗 - CAPTCHA検出継続**
+- 全4テストケース失敗（Chromium/Firefox × セレクタ/挿入ターゲット）
+- エラー: `TimeoutError: page.waitForSelector: Timeout 10000ms exceeded.`
+
+### 最終決定: テスト対象から除外
+
+#### 判断根拠
+
+上記「代替案への切り替え基準」の条件を満たしたため、**Amazon (Japanese)をテスト対象から除外**することを決定：
+
+1. ✅ ステルス設定実装後も即座にテスト失敗（3日間待つまでもなく）
+2. ✅ CAPTCHA回避率 0%（50%未満）
+3. ✅ 他の主要ECサイトで十分なカバレッジ確保
+   - DLsite、FANZA（Video/Doujin/Books）、メロンブックス、とらのあな、駿河屋等
+
+#### Amazonのボット検出が回避不可能な理由
+
+以下の対策を組み合わせても検出されました：
+
+1. **日本IPアドレス** - ProtonVPN経由でも検出
+2. **最新User-Agent** - Chrome 131.0.0.0でも検出
+3. **JavaScript API偽装** - navigator.webdriver削除でも検出
+4. **人間らしい動作** - マウス移動・スクロールでも検出
+5. **適切なロケール設定** - ja-JP、Asia/Tokyoでも検出
+
+Amazonは以下のような高度な検出手法を使用していると推測されます：
+- GitHub ActionsのIPレンジをブラックリスト化
+- Canvas/WebGLフィンガープリント
+- Headlessブラウザの細かい挙動差異の検出
+- ネットワークパターン分析
+
+### 除外の実装
+
+**変更内容**:
+```typescript
+// src/__tests__/large/monitoring/shared.ts
+
+// staticSites配列からAmazon (Japanese)を削除
+// コメントで除外理由を記載
+
+// insertionTargetsからAmazon (Japanese)を削除
+// コメントで除外理由を記載
+```
+
+### ステルスモード実装の今後
+
+**他サイトへの適用可能性**:
+- ステルスモード実装は`shared.ts`に残す
+- 将来的に他のサイトでボット検出が発生した場合に再利用可能
+- 実装済みの機能:
+  - `setupStealthMode()` - 汎用的なステルス設定
+  - `navigateToAmazonWithStealth()` - サイト専用ナビゲーション（名前変更可能）
+  - 定数化された待機時間設定
+
+### 教訓
+
+1. **大手ECサイトのボット検出は非常に高度**
+   - 単純なUser-Agent偽装では不十分
+   - IPレピュテーション、ブラウザフィンガープリント、行動分析など多層的な検出
+
+2. **CI環境の制約**
+   - GitHub ActionsのIPは多数のボットからアクセスされブラックリスト化されやすい
+   - VPN経由でもHeadlessブラウザの検出は困難
+
+3. **テスト対象の選定基準**
+   - ボット検出が厳しいサイトは除外も選択肢
+   - 他のサイトで十分なカバレッジを確保できれば問題なし
+   - メンテナンスコストと効果のバランスを考慮
+
+### 結論
+
+Amazon (Japanese)のボット検出システムは、現在利用可能な技術では回避困難であることが実証されました。他の主要ECサイト（DLsite、FANZA系、メロンブックス等）で十分なテストカバレッジが確保されているため、Amazon (Japanese)を除外してもプロジェクトの品質保証には影響しないと判断しました。
+
+ステルスモード実装は今回の目的では効果がありませんでしたが、将来的な他サイトへの適用可能性を考慮してコードベースに残します。
+
+**最終ステータス**: Amazon (Japanese) - テスト対象から除外（2026-01-18）

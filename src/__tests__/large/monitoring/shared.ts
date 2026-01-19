@@ -450,19 +450,9 @@ export const staticSites: SiteConfig[] = [
     skipFirefox: false,
     requiresJapanIP: false,
   },
-  {
-    service: "Amazon (Japanese)",
-    url: "https://www.amazon.co.jp/%E3%81%8A%E5%85%84%E3%81%A1%E3%82%83%E3%82%93%E3%81%AF%E3%81%8A%E3%81%97%E3%81%BE%E3%81%84-6-ID%E3%82%B3%E3%83%9F%E3%83%83%E3%82%AF%E3%82%B9-%E3%81%AD%E3%81%93%E3%81%A8%E3%81%86%E3%81%B5/dp/4758069778/?language=ja_JP",
-    selectors: [
-      "#navbar", // header where bar is inserted
-      "#productTitle", // title
-      "#detailBullets_feature_div", // product details section
-      "[href*='ref=dp_byline_cont_book']", // author information (byline link)
-    ],
-    isStatic: true,
-    skipFirefox: false,
-    requiresJapanIP: true,
-  },
+  // Amazon (Japanese) は除外
+  // 理由: Amazonの高度なボット検出システムにより、CI環境・VPN環境いずれでもCAPTCHAが表示され回避不可能
+  // 詳細: docs/amazon-vpn-test-investigation.md 参照
   {
     service: "DLsite",
     url: "https://www.dlsite.com/maniax/work/=/product_id/RJ01341329.html",
@@ -609,7 +599,7 @@ export const spaSites: SiteConfig[] = [
 export const insertionTargets = {
   'BookWalker': '.c-c-header',
   'Amazon (English)': '#navbar',
-  'Amazon (Japanese)': '#navbar',
+  // 'Amazon (Japanese)': テスト対象から除外（ボット検出回避不可能）
   'DLsite': '#header',
   'DLsiteBooks': '#header',
   'Melonbooks': '#header_free_html',
