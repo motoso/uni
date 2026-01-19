@@ -260,8 +260,8 @@ export async function setupStealthMode(page: Page): Promise<void> {
   await page.waitForTimeout(Math.random() * 1000 + 500);
 }
 
-// Amazon専用のヘルパー
-export async function navigateToAmazonWithStealth(page: Page, url: string): Promise<void> {
+// ステルス設定込みのナビゲーションヘルパー（汎用）
+export async function navigateWithStealth(page: Page, url: string): Promise<void> {
   await setupStealthMode(page);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForLoadState('load');
@@ -354,7 +354,7 @@ if (service.includes('Amazon')) {
    - Permissions APIの偽装
    - ランダム待機の追加
 
-2. `navigateToAmazonWithStealth()` - Amazon専用ナビゲーション
+2. `navigateWithStealth()` - ステルス設定込みナビゲーション（汎用）
    - ステルスモード適用
    - マウス移動シミュレーション
    - スクロールシミュレーション
@@ -426,7 +426,7 @@ Amazonは以下のような高度な検出手法を使用していると推測�
 - 将来的に他のサイトでボット検出が発生した場合に再利用可能
 - 実装済みの機能:
   - `setupStealthMode()` - 汎用的なステルス設定
-  - `navigateToAmazonWithStealth()` - サイト専用ナビゲーション（名前変更可能）
+  - `navigateWithStealth()` - 汎用的なステルス設定込みナビゲーション
   - 定数化された待機時間設定
 
 ### 教訓

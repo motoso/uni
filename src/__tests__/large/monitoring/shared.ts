@@ -224,7 +224,7 @@ export async function setupStealthMode(page: Page): Promise<void> {
  * @see {@link setupStealthMode} - ボット検出回避の詳細
  * @see {@link docs/amazon-vpn-test-investigation.md} - Amazonでの検証結果（CAPTCHA回避率0%）
  */
-export async function navigateToAmazonWithStealth(page: Page, url: string): Promise<{ status: number }> {
+export async function navigateWithStealth(page: Page, url: string): Promise<{ status: number }> {
   // ステルスモードを設定
   await setupStealthMode(page);
 

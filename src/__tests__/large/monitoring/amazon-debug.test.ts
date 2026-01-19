@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { navigateToAmazonWithStealth } from './shared';
+import { navigateWithStealth } from './shared';
 
 // CI環境でのAmazon日本語サイトのDOM構造デバッグ用テスト
 // 通常は無効化しているが、専用デバッグワークフローでは実行される
@@ -24,7 +24,7 @@ describeMethod('Amazon (Japanese) DOM Structure Debug', () => {
 
     try {
       // ステルスモードでアクセス
-      const { status } = await navigateToAmazonWithStealth(page, amazonSite.url);
+      const { status } = await navigateWithStealth(page, amazonSite.url);
       const finalUrl = page.url();
       const title = await page.title();
 
