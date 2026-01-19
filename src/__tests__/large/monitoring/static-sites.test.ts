@@ -5,8 +5,7 @@ import {
   handleAgeVerification,
   waitForSPAContent,
   waitForStaticContent,
-  insertionTargets,
-  navigateToAmazonWithStealth
+  insertionTargets
 } from './shared';
 
 staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, isStatic, requiresJapanIP }) => {
@@ -25,24 +24,14 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
         throw new Error(`❌ [NETWORK_ERROR] ${service} is not accessible: HTTP ${healthCheck.httpStatus} - ${healthCheck.error || 'Unknown error'}`);
       }
 
-      // Amazon専用のステルス設定を適用
-      if (service.includes('Amazon')) {
-        await navigateToAmazonWithStealth(page, url);
+      await page.goto(url);
 
-        // Amazonでも年齢認証が必要な場合は対応
-        if (hasAgeVerification) {
-          await handleAgeVerification(page);
-        }
-      } else {
-        await page.goto(url);
-
-        if (hasAgeVerification) {
-          await handleAgeVerification(page);
-        }
-
-        // Static sites can proceed immediately after load
-        await page.waitForLoadState('load');
+      if (hasAgeVerification) {
+        await handleAgeVerification(page);
       }
+
+      // Static sites can proceed immediately after load
+      await page.waitForLoadState('load');
 
       // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
       await waitForStaticContent(page, selectors);
@@ -71,24 +60,14 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
         throw new Error(`❌ [NETWORK_ERROR] ${service} (Firefox) is not accessible: HTTP ${healthCheck.httpStatus} - ${healthCheck.error || 'Unknown error'}`);
       }
 
-      // Amazon専用のステルス設定を適用
-      if (service.includes('Amazon')) {
-        await navigateToAmazonWithStealth(page, url);
+      await page.goto(url);
 
-        // Amazonでも年齢認証が必要な場合は対応
-        if (hasAgeVerification) {
-          await handleAgeVerification(page);
-        }
-      } else {
-        await page.goto(url);
-
-        if (hasAgeVerification) {
-          await handleAgeVerification(page);
-        }
-
-        // Static sites can proceed immediately after load
-        await page.waitForLoadState('load');
+      if (hasAgeVerification) {
+        await handleAgeVerification(page);
       }
+
+      // Static sites can proceed immediately after load
+      await page.waitForLoadState('load');
 
       // 動的DOM生成を考慮した待機 (一部のサイトはページロード後もJSで要素を生成する)
       await waitForStaticContent(page, selectors);
@@ -107,19 +86,14 @@ staticSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox,
 
     // ContentScript integration tests - DOM insertion verification
     test('should correctly insert extension bar in appropriate location', async ({ page, browserName }) => {
-      // Amazon専用のステルス設定を適用
-      if (service.includes('Amazon')) {
-        await navigateToAmazonWithStealth(page, url);
-      } else {
-        await page.goto(url);
+      await page.goto(url);
 
-        if (hasAgeVerification) {
-          await handleAgeVerification(page);
-        }
-
-        // Static sites - wait for load
-        await page.waitForLoadState('load');
+      if (hasAgeVerification) {
+        await handleAgeVerification(page);
       }
+
+      // Static sites - wait for load
+      await page.waitForLoadState('load');
 
       // Check that the insertion target element exists (where ContentScript would insert the bar)
       const targetSelector = insertionTargets[service];
