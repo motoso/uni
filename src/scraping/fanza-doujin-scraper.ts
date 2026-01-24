@@ -43,9 +43,18 @@ export function scrapeFanzaDoujinData(document: Document): FanzaDoujinScrapedDat
     log(`Title selector failed: ${selector}`);
   }
 
-  const title = titleElement ? titleElement.innerText
-    .replace(/【.*】/, "")
-    .trim() : "";
+  // キャンペーン情報を除外してタイトルを取得
+  let title = "";
+  if (titleElement) {
+    // キャンペーンspanを除外するためにクローンを作成
+    const clonedElement = titleElement.cloneNode(true) as HTMLElement;
+    const campaignSpan = clonedElement.querySelector('.productTitle__txt--campaign');
+    if (campaignSpan) {
+      campaignSpan.remove();
+      log('Removed campaign span from title');
+    }
+    title = clonedElement.innerText.trim();
+  }
 
   if (!title) {
     log('❌ No title found with any selector');
