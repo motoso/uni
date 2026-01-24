@@ -21,6 +21,14 @@ test("URL_ページパス含む場合はプロジェクト名のみ抽出", () =
   expect(normalizeProjectName("https://scrapbox.io/project-name/some-page")).toBe("project-name");
 });
 
+test("URL_クエリパラメータ含む", () => {
+  expect(normalizeProjectName("https://scrapbox.io/project-name?foo=bar")).toBe("project-name");
+});
+
+test("前後の空白削除", () => {
+  expect(normalizeProjectName("  project-name  ")).toBe("project-name");
+});
+
 test("空文字列", () => {
   expect(normalizeProjectName("")).toBe("");
 });

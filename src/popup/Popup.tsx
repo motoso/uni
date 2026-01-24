@@ -113,6 +113,13 @@ export default function Popup() {
   }, [setProjectName, setFormats]);
 
   const onProjectNameChangeHandler = useCallback(
+    (e: React.FormEvent<HTMLInputElement>) => {
+      setProjectName(e.currentTarget.value);
+    },
+    [setProjectName],
+  );
+
+  const onProjectNameBlurHandler = useCallback(
     async (e: React.FormEvent<HTMLInputElement>) => {
       const newProjectName = normalizeProjectName(e.currentTarget.value);
       setProjectName(newProjectName);
@@ -158,6 +165,7 @@ export default function Popup() {
           value={projectName}
           type="text"
           onChange={onProjectNameChangeHandler}
+          onBlur={onProjectNameBlurHandler}
           placeholder="XXXX"
           className="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         />
