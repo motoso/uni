@@ -4,6 +4,7 @@ import "../css/tailwind.scss";
 import { StorageKeyProjectName, StorageKeyScrapboxFormats } from "../chromeApi";
 import browser from "webextension-polyfill";
 import { ProductType } from "../Product";
+import { normalizeProjectName } from "./normalizeProjectName";
 
 const defaultScrapboxFormats: Record<ProductType, string> = {
   book: `[{service}で読む {url}]
@@ -113,7 +114,7 @@ export default function Popup() {
 
   const onProjectNameChangeHandler = useCallback(
     async (e: React.FormEvent<HTMLInputElement>) => {
-      const newProjectName = e.currentTarget.value;
+      const newProjectName = normalizeProjectName(e.currentTarget.value);
       setProjectName(newProjectName);
       await browser.storage.sync.set({
         [StorageKeyProjectName]: newProjectName,
