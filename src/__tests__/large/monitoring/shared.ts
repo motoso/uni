@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page } from "@playwright/test";
 
 export interface SiteConfig {
   service: string;
@@ -11,24 +11,27 @@ export interface SiteConfig {
 }
 
 // ヘルスチェック関数 - ネットワーク問題か構造問題かを判別
-export async function performHealthCheck(page: Page, url: string): Promise<{
+export async function performHealthCheck(
+  page: Page,
+  url: string,
+): Promise<{
   httpStatus: number | null;
   accessible: boolean;
   error?: string;
 }> {
   try {
-    const response = await page.goto(url, { waitUntil: 'commit' });
+    const response = await page.goto(url, { waitUntil: "commit" });
     const status = response?.status() ?? null;
 
     return {
       httpStatus: status,
-      accessible: status ? status < 400 : false
+      accessible: status ? status < 400 : false,
     };
   } catch (error) {
     return {
       httpStatus: null,
       accessible: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -40,21 +43,21 @@ export async function handleAgeVerification(page: Page): Promise<void> {
   const redirectTimeout = isCI ? 30000 : 10000;
 
   try {
-    console.log(`[${isCI ? 'CI' : 'LOCAL'}] Checking for age verification...`);
+    console.log(`[${isCI ? "CI" : "LOCAL"}] Checking for age verification...`);
 
     // 現在のURLを確認して年齢認証ページかどうか判定
     const currentUrl = page.url();
     console.log(`Current URL: ${currentUrl}`);
 
-    if (currentUrl.includes('age_check') || currentUrl.includes('年齢認証')) {
-      console.log('🔞 Age verification page detected');
+    if (currentUrl.includes("age_check") || currentUrl.includes("年齢認証")) {
+      console.log("🔞 Age verification page detected");
 
       // 年齢認証ボタンを試行 (supports both English for CI and Japanese for local VPN)
       const ageCheckSelectors = [
         // English prompts (GitHub Actions runs from the US and surfaces these)
-        'text=Agree',
-        'text=I Agree',
-        'text=Yes',
+        "text=Agree",
+        "text=I Agree",
+        "text=Yes",
         'button:has-text("Agree")',
         'button:has-text("I Agree")',
         'button:has-text("Yes")',
@@ -62,10 +65,10 @@ export async function handleAgeVerification(page: Page): Promise<void> {
         'a:has-text("I Agree")',
         'a:has-text("Yes")',
         // Japanese prompts (local debugging from Japan VPN keeps working)
-        'text=はい',
+        "text=はい",
         'button:has-text("はい")',
         'input[value="はい"]',
-        'a:has-text("はい")'
+        'a:has-text("はい")',
       ];
 
       let buttonClicked = false;
@@ -85,13 +88,15 @@ export async function handleAgeVerification(page: Page): Promise<void> {
       }
 
       if (!buttonClicked) {
-        console.log('❌ No age verification button found, checking for auto-redirect...');
+        console.log(
+          "❌ No age verification button found, checking for auto-redirect...",
+        );
         // CI環境では自動リダイレクトがある場合を考慮してしばらく待機
         if (isCI) {
           await page.waitForTimeout(5000);
         }
       } else {
-        console.log('✅ Age verification button clicked');
+        console.log("✅ Age verification button clicked");
 
         // CI環境ではクリック後に少し待機
         if (isCI) {
@@ -102,24 +107,32 @@ export async function handleAgeVerification(page: Page): Promise<void> {
       // リダイレクト完了まで待機（複数パターン対応）
       try {
         await Promise.race([
-          page.waitForURL('**/av/content/**', { timeout: redirectTimeout }),
-          page.waitForURL('**/dc/doujin/**', { timeout: redirectTimeout }),
-          page.waitForURL('**/book/**', { timeout: redirectTimeout }),
-          page.waitForURL('**/anime/content/**', { timeout: redirectTimeout }),
-          page.waitForURL(url => !url.href.includes('age_check') && !url.href.includes('login'), { timeout: redirectTimeout })
+          page.waitForURL("**/av/content/**", { timeout: redirectTimeout }),
+          page.waitForURL("**/dc/doujin/**", { timeout: redirectTimeout }),
+          page.waitForURL("**/book/**", { timeout: redirectTimeout }),
+          page.waitForURL("**/anime/content/**", { timeout: redirectTimeout }),
+          page.waitForURL(
+            (url) =>
+              !url.href.includes("age_check") && !url.href.includes("login"),
+            { timeout: redirectTimeout },
+          ),
         ]);
-        console.log('✅ Age verification completed, redirected to content page');
+        console.log(
+          "✅ Age verification completed, redirected to content page",
+        );
       } catch (error) {
         // リダイレクトが失敗した場合、現在のURLを再確認
         const finalUrl = page.url();
         console.log(`Final URL after age verification: ${finalUrl}`);
 
-        if (finalUrl.includes('age_check') || finalUrl.includes('login')) {
-          throw new Error(`Age verification failed - still on auth page: ${finalUrl}`);
-        } else if (finalUrl.includes('dmm.co.jp')) {
+        if (finalUrl.includes("age_check") || finalUrl.includes("login")) {
+          throw new Error(
+            `Age verification failed - still on auth page: ${finalUrl}`,
+          );
+        } else if (finalUrl.includes("dmm.co.jp")) {
           // Age verification success - only log on verbose mode
           if (process.env.VERBOSE_DEBUG) {
-            console.log('✅ Successfully bypassed age verification');
+            console.log("✅ Successfully bypassed age verification");
           }
         } else {
           throw error;
@@ -129,24 +142,27 @@ export async function handleAgeVerification(page: Page): Promise<void> {
       // CI環境ではリダイレクト後にコンテンツ読み込み完了まで十分待機
       if (isCI) {
         if (process.env.VERBOSE_DEBUG) {
-          console.log('CI: Adding post-redirect content loading time (10s)...');
+          console.log("CI: Adding post-redirect content loading time (10s)...");
         }
         await page.waitForTimeout(10000);
         // さらにネットワークアイドルも待機
         try {
-          await page.waitForLoadState('networkidle', { timeout: 8000 });
+          await page.waitForLoadState("networkidle", { timeout: 8000 });
           if (process.env.VERBOSE_DEBUG) {
-        console.log('CI: Network idle achieved');
-      }
+            console.log("CI: Network idle achieved");
+          }
         } catch (error) {
-          console.log('CI: Network idle timeout, proceeding anyway');
+          console.log("CI: Network idle timeout, proceeding anyway");
         }
       }
     } else {
-      console.log('ℹ️ No age verification page detected or already bypassed');
+      console.log("ℹ️ No age verification page detected or already bypassed");
     }
   } catch (error) {
-    console.log('⚠️ Age verification handling failed:', error instanceof Error ? error.message : 'Unknown error');
+    console.log(
+      "⚠️ Age verification handling failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     // CI環境では年齢認証失敗時にスクリーンショットを撮影
     if (isCI) {
       const screenshotPath = `debug-age-verification-failed-${Date.now()}.png`;
@@ -158,7 +174,7 @@ export async function handleAgeVerification(page: Page): Promise<void> {
 }
 
 // ステルスモード設定の定数
-const STEALTH_RANDOM_DELAY_MIN = 500;  // ランダム待機の最小値（ms）
+const STEALTH_RANDOM_DELAY_MIN = 500; // ランダム待機の最小値（ms）
 const STEALTH_RANDOM_DELAY_MAX = 1500; // ランダム待機の最大値（ms）
 const STEALTH_STABILIZATION_DELAY = 2000; // 安定化待機時間（ms）
 
@@ -181,7 +197,7 @@ export async function setupStealthMode(page: Page): Promise<void> {
   // JavaScript API偽装でHeadless検出を回避
   await page.addInitScript(() => {
     // navigator.webdriver を削除
-    Object.defineProperty(navigator, 'webdriver', {
+    Object.defineProperty(navigator, "webdriver", {
       get: () => false,
     });
 
@@ -192,15 +208,22 @@ export async function setupStealthMode(page: Page): Promise<void> {
 
     // Permissions API の偽装
     const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = ((parameters: PermissionDescriptor) => (
-      parameters.name === 'notifications' ?
-        Promise.resolve({ state: 'denied', onchange: null } as PermissionStatus) :
-        originalQuery.call(window.navigator.permissions, parameters)
-    )) as typeof originalQuery;
+    window.navigator.permissions.query = ((parameters: PermissionDescriptor) =>
+      parameters.name === "notifications"
+        ? Promise.resolve({
+            state: "denied",
+            onchange: null,
+          } as PermissionStatus)
+        : originalQuery.call(
+            window.navigator.permissions,
+            parameters,
+          )) as typeof originalQuery;
   });
 
   // 人間らしい動作パターン - ランダムな待機
-  const randomDelay = Math.random() * (STEALTH_RANDOM_DELAY_MAX - STEALTH_RANDOM_DELAY_MIN) + STEALTH_RANDOM_DELAY_MIN;
+  const randomDelay =
+    Math.random() * (STEALTH_RANDOM_DELAY_MAX - STEALTH_RANDOM_DELAY_MIN) +
+    STEALTH_RANDOM_DELAY_MIN;
   await page.waitForTimeout(randomDelay);
 }
 
@@ -224,20 +247,23 @@ export async function setupStealthMode(page: Page): Promise<void> {
  * @see {@link setupStealthMode} - ボット検出回避の詳細
  * @see {@link docs/amazon-vpn-test-investigation.md} - Amazonでの検証結果（CAPTCHA回避率0%）
  */
-export async function navigateWithStealth(page: Page, url: string): Promise<{ status: number }> {
+export async function navigateWithStealth(
+  page: Page,
+  url: string,
+): Promise<{ status: number }> {
   // ステルスモードを設定
   await setupStealthMode(page);
 
   // ページに移動（早期に解析開始）
   const response = await page.goto(url, {
-    waitUntil: 'domcontentloaded',
-    timeout: 30000
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
   });
 
   const status = response?.status() || 0;
 
   // 段階的な読み込み待機
-  await page.waitForLoadState('load');
+  await page.waitForLoadState("load");
 
   // 人間らしいマウス移動のシミュレーション
   try {
@@ -263,12 +289,18 @@ export async function navigateWithStealth(page: Page, url: string): Promise<{ st
 }
 
 // Static sites読み込み完了の待機 - 動的DOM生成対応
-export async function waitForStaticContent(page: Page, selectors: string[]): Promise<void> {
+export async function waitForStaticContent(
+  page: Page,
+  selectors: string[],
+): Promise<void> {
   if (selectors.length === 0) return;
 
   for (const selector of selectors) {
     // まず高速チェック - 既に存在するか確認
-    const quickCheck = await page.locator(selector).count().catch(() => 0);
+    const quickCheck = await page
+      .locator(selector)
+      .count()
+      .catch(() => 0);
     if (quickCheck > 0) {
       continue;
     }
@@ -277,63 +309,75 @@ export async function waitForStaticContent(page: Page, selectors: string[]): Pro
     // ページロード後もJavaScriptで要素を追加する場合があるため待機
     await page.waitForSelector(selector, {
       timeout: 10000,
-      state: 'attached'
+      state: "attached",
     });
   }
 }
 
 // SPA読み込み完了の待機 - CI環境での年齢認証バイパス対応
-export async function waitForSPAContent(page: Page, selectors: string[]): Promise<void> {
+export async function waitForSPAContent(
+  page: Page,
+  selectors: string[],
+): Promise<void> {
   if (selectors.length === 0) return;
 
   const isCI = !!process.env.CI;
   if (process.env.VERBOSE_DEBUG) {
-    console.log(`[${isCI ? 'CI' : 'LOCAL'}] Starting SPA content detection for selectors: [${selectors.join(', ')}]`);
+    console.log(
+      `[${isCI ? "CI" : "LOCAL"}] Starting SPA content detection for selectors: [${selectors.join(", ")}]`,
+    );
   }
 
   // CI環境では年齢認証がバイパスされるため、SPA初期化を確実に待つ
   if (isCI) {
     if (process.env.VERBOSE_DEBUG) {
-      console.log('CI: Ensuring SPA initialization completion...');
+      console.log("CI: Ensuring SPA initialization completion...");
     }
 
     // 1. ネットワークアイドルを待機してリソース読み込み完了を確認
     try {
-      await page.waitForLoadState('networkidle', { timeout: 12000 });
+      await page.waitForLoadState("networkidle", { timeout: 12000 });
       if (process.env.VERBOSE_DEBUG) {
-        console.log('CI: Network idle achieved');
+        console.log("CI: Network idle achieved");
       }
     } catch (error) {
       if (process.env.VERBOSE_DEBUG) {
-        console.log('CI: Network idle timeout, proceeding with DOM ready check');
+        console.log(
+          "CI: Network idle timeout, proceeding with DOM ready check",
+        );
       }
     }
 
     // 2. DOM readyStateの確認
     try {
-      await page.waitForFunction('document.readyState === "complete"', { timeout: 8000 });
+      await page.waitForFunction('document.readyState === "complete"', {
+        timeout: 8000,
+      });
       if (process.env.VERBOSE_DEBUG) {
-        console.log('CI: Document ready state complete');
+        console.log("CI: Document ready state complete");
       }
     } catch (error) {
       if (process.env.VERBOSE_DEBUG) {
-        console.log('CI: Document ready timeout, proceeding anyway');
+        console.log("CI: Document ready timeout, proceeding anyway");
       }
     }
 
     // 3. 一般的なSPA初期化完了の待機（React/Vue等のレンダリング）
     await page.waitForTimeout(3000);
     if (process.env.VERBOSE_DEBUG) {
-      console.log('CI: Post-navigation SPA initialization wait complete');
+      console.log("CI: Post-navigation SPA initialization wait complete");
     }
   }
 
   // Try each selector in order, prioritizing specific content selectors
-  const prioritizedSelectors = selectors.filter(s => s !== 'body' && s !== 'html')
-    .concat(selectors.filter(s => s === 'body' || s === 'html'));
+  const prioritizedSelectors = selectors
+    .filter((s) => s !== "body" && s !== "html")
+    .concat(selectors.filter((s) => s === "body" || s === "html"));
 
   const timeout = isCI ? 15000 : 8000; // CI: 単一の長いタイムアウト、ローカル: 短めで効率的に
-  console.log(`[${isCI ? 'CI' : 'LOCAL'}] Attempting content detection (timeout: ${timeout}ms)`);
+  console.log(
+    `[${isCI ? "CI" : "LOCAL"}] Attempting content detection (timeout: ${timeout}ms)`,
+  );
 
   for (const selector of prioritizedSelectors) {
     try {
@@ -354,12 +398,16 @@ export async function waitForSPAContent(page: Page, selectors: string[]): Promis
         }, selector);
 
         if (!hasContent) {
-          console.log(`❌ Selector '${selector}' found but has no content, trying next...`);
+          console.log(
+            `❌ Selector '${selector}' found but has no content, trying next...`,
+          );
           continue;
         }
       }
 
-      console.log(`✅ SPA content loaded and verified, found selector: ${selector}`);
+      console.log(
+        `✅ SPA content loaded and verified, found selector: ${selector}`,
+      );
 
       // CI環境では最終的な描画完了のための短い待機
       if (isCI) {
@@ -374,49 +422,59 @@ export async function waitForSPAContent(page: Page, selectors: string[]): Promis
   }
 
   // All attempts failed - take screenshot and debug DOM structure
-  console.log(`All SPA content detection failed for selectors: [${selectors.join(', ')}]`);
+  console.log(
+    `All SPA content detection failed for selectors: [${selectors.join(", ")}]`,
+  );
 
   if (isCI) {
     // CI環境でDOMデバッグ情報を出力
-    console.log('🔍 DEBUG: Analyzing current DOM structure...');
-    console.log('🏗️ Environment Info:');
+    console.log("🔍 DEBUG: Analyzing current DOM structure...");
+    console.log("🏗️ Environment Info:");
     console.log(`   CI: ${process.env.CI}`);
     console.log(`   GITHUB_ACTIONS: ${process.env.GITHUB_ACTIONS}`);
     console.log(`   NODE_VERSION: ${process.version}`);
-    console.log(`   USER_AGENT: ${await page.evaluate(() => navigator.userAgent)}`);
-    console.log(`   VIEWPORT: ${await page.evaluate(() => `${window.innerWidth}x${window.innerHeight}`)}`);
-    console.log(`   IS_HEADLESS: ${await page.evaluate(() => navigator.webdriver)}`);
+    console.log(
+      `   USER_AGENT: ${await page.evaluate(() => navigator.userAgent)}`,
+    );
+    console.log(
+      `   VIEWPORT: ${await page.evaluate(() => `${window.innerWidth}x${window.innerHeight}`)}`,
+    );
+    console.log(
+      `   IS_HEADLESS: ${await page.evaluate(() => navigator.webdriver)}`,
+    );
 
     const browserInfo = await page.evaluate(() => ({
       cookieEnabled: navigator.cookieEnabled,
       language: navigator.language,
       platform: navigator.platform,
       vendor: navigator.vendor,
-      webdriver: navigator.webdriver
+      webdriver: navigator.webdriver,
     }));
     console.log(`   BROWSER_INFO: ${JSON.stringify(browserInfo)}`);
 
     const domInfo = await page.evaluate(() => {
       const info = {
-        title: document.title || 'No title',
+        title: document.title || "No title",
         url: window.location.href,
         bodyChildrenCount: document.body?.children?.length || 0,
         headChildrenCount: document.head?.children?.length || 0,
-        allH1Elements: Array.from(document.querySelectorAll('h1')).map(el => ({
-          tagName: el.tagName,
-          textContent: el.textContent?.slice(0, 100) || '',
-          className: el.className || '',
-          id: el.id || ''
-        })),
-        allTableElements: Array.from(document.querySelectorAll('table')).length,
-        bodyClasses: document.body?.className || '',
+        allH1Elements: Array.from(document.querySelectorAll("h1")).map(
+          (el) => ({
+            tagName: el.tagName,
+            textContent: el.textContent?.slice(0, 100) || "",
+            className: el.className || "",
+            id: el.id || "",
+          }),
+        ),
+        allTableElements: Array.from(document.querySelectorAll("table")).length,
+        bodyClasses: document.body?.className || "",
         commonSelectors: [
-          '.productTitle__txt',
-          '.css-1omcat5',
-          'dl',
-          'h1',
-          'table'
-        ].map(sel => ({
+          ".productTitle__txt",
+          ".css-1omcat5",
+          "dl",
+          "h1",
+          "table",
+        ].map((sel) => ({
           selector: sel,
           found: document.querySelector(sel) !== null,
           count: document.querySelectorAll(sel).length,
@@ -425,17 +483,17 @@ export async function waitForSPAContent(page: Page, selectors: string[]): Promis
             if (!el) return null;
             return {
               tagName: el.tagName,
-              textContent: el.textContent?.slice(0, 100) || '',
-              className: el.className || '',
-              id: el.id || ''
+              textContent: el.textContent?.slice(0, 100) || "",
+              className: el.className || "",
+              id: el.id || "",
             };
-          })()
-        }))
+          })(),
+        })),
       };
       return info;
     });
 
-    console.log('📊 DOM DEBUG INFO:');
+    console.log("📊 DOM DEBUG INFO:");
     console.log(`   Title: ${domInfo.title}`);
     console.log(`   URL: ${domInfo.url}`);
     console.log(`   Body children: ${domInfo.bodyChildrenCount}`);
@@ -444,17 +502,23 @@ export async function waitForSPAContent(page: Page, selectors: string[]): Promis
     console.log(`   H1 elements found: ${domInfo.allH1Elements.length}`);
 
     domInfo.allH1Elements.forEach((h1, idx) => {
-      console.log(`   H1[${idx}]: "${h1.textContent}" (class: "${h1.className}", id: "${h1.id}")`);
+      console.log(
+        `   H1[${idx}]: "${h1.textContent}" (class: "${h1.className}", id: "${h1.id}")`,
+      );
     });
 
     console.log(`   Table elements: ${domInfo.allTableElements}`);
-    console.log('🎯 SELECTOR ANALYSIS:');
+    console.log("🎯 SELECTOR ANALYSIS:");
 
-    domInfo.commonSelectors.forEach(selectorInfo => {
-      console.log(`   ${selectorInfo.selector}: ${selectorInfo.found ? '✅ FOUND' : '❌ NOT FOUND'} (count: ${selectorInfo.count})`);
+    domInfo.commonSelectors.forEach((selectorInfo) => {
+      console.log(
+        `   ${selectorInfo.selector}: ${selectorInfo.found ? "✅ FOUND" : "❌ NOT FOUND"} (count: ${selectorInfo.count})`,
+      );
       if (selectorInfo.firstElementInfo) {
         const info = selectorInfo.firstElementInfo;
-        console.log(`      → "${info.textContent}" (class: "${info.className}", id: "${info.id}")`);
+        console.log(
+          `      → "${info.textContent}" (class: "${info.className}", id: "${info.id}")`,
+        );
       }
     });
   }
@@ -463,7 +527,9 @@ export async function waitForSPAContent(page: Page, selectors: string[]): Promis
   await page.screenshot({ path: screenshotPath, fullPage: true });
   console.log(`Debug screenshot saved: ${screenshotPath}`);
 
-  throw new Error(`SPA content not found or empty for selectors: [${selectors.join(', ')}]`);
+  throw new Error(
+    `SPA content not found or empty for selectors: [${selectors.join(", ")}]`,
+  );
 }
 
 // Static sites (formerly in monitoring.test.ts)
@@ -524,7 +590,7 @@ export const staticSites: SiteConfig[] = [
     ],
     isStatic: true,
     skipFirefox: false,
-    requiresJapanIP: false,
+    requiresJapanIP: true, // Cloudflare/geo blocks non-Japan IPs with HTTP 403
   },
   {
     service: "DLsiteManiax",
@@ -630,18 +696,18 @@ export const spaSites: SiteConfig[] = [
 
 // ContentScript insertion target mapping
 export const insertionTargets = {
-  'BookWalker': '.c-c-header',
-  'Amazon (English)': '#navbar',
+  BookWalker: ".c-c-header",
+  "Amazon (English)": "#navbar",
   // 'Amazon (Japanese)': テスト対象から除外（ボット検出回避不可能、詳細: docs/amazon-vpn-test-investigation.md）
-  'DLsite': '#header',
-  'DLsiteBooks': '#header',
-  'Melonbooks': '#header_free_html',
-  'DLsiteManiax': '#header',
-  'Fc2ContentMarket': 'header',
-  'Surugaya': 'body > div.dialog-off-canvas-main-canvas > header > div.top_nav',
-  'Toranoana': 'header',
-  'FANZA Video': 'header, body', // Fallback to body if header not found
-  'FANZA Doujin': 'header, body',
-  'FANZA Books': 'header, body',
-  'FANZA Anime': 'header, body'
+  DLsite: "#header",
+  DLsiteBooks: "#header",
+  Melonbooks: "#header_free_html",
+  DLsiteManiax: "#header",
+  Fc2ContentMarket: "header",
+  Surugaya: "body > div.dialog-off-canvas-main-canvas > header > div.top_nav",
+  Toranoana: "header",
+  "FANZA Video": "header, body", // Fallback to body if header not found
+  "FANZA Doujin": "header, body",
+  "FANZA Books": "header, body",
+  "FANZA Anime": "header, body",
 };
