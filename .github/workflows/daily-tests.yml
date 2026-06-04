@@ -80,8 +80,10 @@ jobs:
       - name: Parse test results and create detailed issue
         if: failure() && (steps.large-global-tests.outcome == 'failure' || steps.large-japan-tests.outcome == 'failure')
         run: |
-          echo "title=🚨 Daily Site Monitoring Test Failed" > issue.md
-          echo "body=## Test Failure Summary" >> issue.md
+          # NOTE: peter-evans/create-issue-from-file は title を別入力で受け取り、
+          # このファイルは本文(body)としてのみ使われる。先頭に title=/body= を書くと
+          # それが本文にそのまま出るだけなので書かない。
+          echo "## Test Failure Summary" > issue.md
           echo "" >> issue.md
 
           # Check which test job failed
@@ -127,6 +129,7 @@ jobs:
         uses: peter-evans/create-issue-from-file@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          title: "🚨 Daily Site Monitoring Test Failed"
           content-filepath: ./issue.md
           labels: bug, monitoring
           assignees: ${{ github.actor }}
