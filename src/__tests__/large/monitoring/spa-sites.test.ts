@@ -4,10 +4,11 @@ import {
   performHealthCheck,
   handleAgeVerification,
   waitForSPAContent,
-  insertionTargets
+  insertionTargets,
+  isEnvironmentalIpBlock
 } from './shared';
 
-spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, isStatic, requiresJapanIP }) => {
+spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, isStatic, requiresJapanIP, allowIpBlock }) => {
   const tag = requiresJapanIP ? '@japan' : '@global';
   test.describe(`${tag} Site Monitoring - ${service} (SPA)`, () => {
 
@@ -18,6 +19,12 @@ spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, is
       console.log(`🏥 Health check for ${service}...`);
       const healthCheck = await performHealthCheck(page, url);
       console.log(`🏥 Health check result: status=${healthCheck.httpStatus}, accessible=${healthCheck.accessible}`);
+
+      // CIのVPNデータセンターIPがCloudflareに403でブロックされた場合は構造検証不能なのでskip
+      // (環境要因。詳細: docs/monitoring-ip-block-limitation.md)
+      if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
+        test.skip(true, `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`);
+      }
 
       if (!healthCheck.accessible) {
         throw new Error(`❌ [NETWORK_ERROR] ${service} is not accessible: HTTP ${healthCheck.httpStatus} - ${healthCheck.error || 'Unknown error'}`);
@@ -52,6 +59,12 @@ spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, is
       const healthCheck = await performHealthCheck(page, url);
       console.log(`🏥 Health check result: status=${healthCheck.httpStatus}, accessible=${healthCheck.accessible}`);
 
+      // CIのVPNデータセンターIPがCloudflareに403でブロックされた場合は構造検証不能なのでskip
+      // (環境要因。詳細: docs/monitoring-ip-block-limitation.md)
+      if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
+        test.skip(true, `${service} (Firefox): HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`);
+      }
+
       if (!healthCheck.accessible) {
         throw new Error(`❌ [NETWORK_ERROR] ${service} (Firefox) is not accessible: HTTP ${healthCheck.httpStatus} - ${healthCheck.error || 'Unknown error'}`);
       }
@@ -79,6 +92,13 @@ spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, is
 
     // ContentScript integration tests - DOM insertion verification
     test('should correctly insert extension bar in appropriate location', async ({ page, browserName }) => {
+      // CIのVPNデータセンターIPがCloudflareに403でブロックされた場合は挿入位置検証不能なのでskip
+      // (環境要因。詳細: docs/monitoring-ip-block-limitation.md)
+      const healthCheck = await performHealthCheck(page, url);
+      if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
+        test.skip(true, `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`);
+      }
+
       await page.goto(url);
 
       if (hasAgeVerification) {

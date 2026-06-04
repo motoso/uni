@@ -8,6 +8,25 @@ export interface SiteConfig {
   skipFirefox?: boolean;
   isStatic?: boolean;
   requiresJapanIP?: boolean;
+  /**
+   * true のサイトは、ヘルスチェックが HTTP 403 を返したらテスト失敗ではなく skip する。
+   * 用途: Cloudflare 等が CI の VPN データセンターIPをブロックし、地理に関係なく
+   * 403 を返すサイト（Melonbooks / Surugaya 等）。手元の日本住宅用IPでは 200 が返る。
+   * ⚠️ リスク: 「本当に永続的なブロック」や「403の裏で構造が変わったケース」も
+   *    黙って skip され続ける。403 が続く場合は日本の住宅用IPから手動確認すること。
+   *    詳細: docs/monitoring-ip-block-limitation.md
+   */
+  allowIpBlock?: boolean;
+}
+
+// HTTP 403 は STRUCTURE_ERROR ではなく NETWORK_ERROR（ページすら読めていない）。
+// allowIpBlock 指定サイトでは構造変更検知を諦め、CIのVPNデータセンターIPブロックという
+// 環境ノイズをテスト失敗ではなく skip に変換する。
+export function isEnvironmentalIpBlock(
+  healthCheck: { httpStatus: number | null },
+  allowIpBlock?: boolean,
+): boolean {
+  return !!allowIpBlock && healthCheck.httpStatus === 403;
 }
 
 // ヘルスチェック関数 - ネットワーク問題か構造問題かを判別
@@ -591,6 +610,7 @@ export const staticSites: SiteConfig[] = [
     isStatic: true,
     skipFirefox: false,
     requiresJapanIP: true, // Cloudflare/geo blocks non-Japan IPs with HTTP 403
+    allowIpBlock: true, // CIのVPNデータセンターIPもCloudflareに403でブロックされるため、403はskip扱い
   },
   {
     service: "DLsiteManiax",
@@ -629,6 +649,7 @@ export const staticSites: SiteConfig[] = [
     isStatic: true,
     skipFirefox: false,
     requiresJapanIP: true, // Cloudflare blocks non-Japan IPs with HTTP 403
+    allowIpBlock: true, // CIのVPNデータセンターIPもCloudflareに403でブロックされるため、403はskip扱い
   },
   {
     service: "Toranoana",
