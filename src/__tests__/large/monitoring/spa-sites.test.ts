@@ -94,9 +94,12 @@ spaSites.forEach(({ service, url, selectors, hasAgeVerification, skipFirefox, is
     test('should correctly insert extension bar in appropriate location', async ({ page, browserName }) => {
       // CIのVPNデータセンターIPがCloudflareに403でブロックされた場合は挿入位置検証不能なのでskip
       // (環境要因。詳細: docs/monitoring-ip-block-limitation.md)
-      const healthCheck = await performHealthCheck(page, url);
-      if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
-        test.skip(true, `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`);
+      // allowIpBlockのサイトのみ追加のヘルスチェックを行い、それ以外は余計なHTTP往復を避ける
+      if (allowIpBlock) {
+        const healthCheck = await performHealthCheck(page, url);
+        if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
+          test.skip(true, `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`);
+        }
       }
 
       await page.goto(url);
