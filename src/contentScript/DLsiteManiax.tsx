@@ -6,7 +6,10 @@ import { BaseContentScript } from "./BaseContentScript";
 import Doujinshi from "../Doujinshi";
 import Asmr from "../Asmr";
 import Product from "../Product";
-import { scrapeDLsiteManiaxData } from "../scraping/dlsite-maniax-scraper";
+import {
+  DLSITE_MANIAX_ASMR_TYPE,
+  scrapeDLsiteManiaxData,
+} from "../scraping/dlsite-maniax-scraper";
 
 /**
  * DLSite maniaxやがるまに
@@ -40,7 +43,7 @@ class DLsiteManiax extends BaseContentScript {
     const publishedAt = dayjs(scrapedData.publishedAt);
 
     switch (scrapedData.type) {
-      case "ボイス・ASMR":
+      case DLSITE_MANIAX_ASMR_TYPE:
         return Asmr.make(
           AcceptedService.dlsiteManiax,
           scrapedData.title,
