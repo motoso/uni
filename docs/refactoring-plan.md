@@ -9,6 +9,8 @@
 2. **「もう買ってるかも」の false positive 厳密化は別 Issue**。今回のリファクタは挙動を変えず現状の `count >= 1` を維持。`existsExactTitleMatch` の実装・4語丸めの見直しは仕様検討を要するため切り出す。
 3. **Amazon は「確認済み DOM バリアントごとに1セレクタ」**。投機的な7連鎖は全廃。原則1セレクタとし、実在が確認できる複数レイアウト（箇条書き `#detailBullets_feature_div` / テーブル `#productDetails...`）のみそれぞれ1セレクタを許容（CLAUDE.md の "必須の場合" に該当）。Phase6 のフィクスチャ後に実施。
 4. **Phase0 のデバッグ資産は monitoring 配下に集約**。`*-specific-debug.test.ts` は残すが debug 用ディレクトリへ整理。PNG/curl/失敗 txt は除去・gitignore。
+5. **エントリポイント／ビルド基盤の刷新は評価フェーズとして計画化（Phase 7）**。「webpack 維持＋レジストリ生成 / Vite+crxjs / WXT」を比較し ADR で決める。WXT を本命候補に PoC するが採否は計測後、最低ラインはレジストリ生成でドリフト解消。ランタイム（Phase1〜5）完了後に着手。
+6. **バー UI のランタイム軽量化も評価フェーズとして計画化（Phase 8）**。react-dom×15 重複を Preact 代替 or vanilla 化で削減。Phase 7 とは独立に進められる。content script 側のみ対象（popup は React 維持）。
 
 ## 0. 背景とアーキテクチャ概観
 
@@ -67,6 +69,13 @@
 - **tracked**: `ci-failed-tests.txt`, `failed-tests-patterns.txt` → `git rm --cached` 必要。
 - **untracked**: `*-debug-screenshot.png`, `curl`, zip → `.gitignore` 追加で十分（zip は既に未追跡）。
 - 純関数スクレイパーなのに HTML フィクスチャのユニットテストが無く、live monitoring 依存で flaky。
+
+### P8 エントリポイント／ビルド基盤が「webpack 時代の取ってつけ」
+- **三重の手書き管理＋ドリフト**: webpack entry（15列挙）／manifest content_scripts（13）／eventPage の declarativeContent（7）が別々に手書きで、互いにズレている。
+- **副作用モジュール縛り**: 各 content script は末尾 `new X().execute()` の副作用で動き、「1ファイル＝1 webpack エントリ」に固定されている。
+- **React がバンドルごとに重複**: ビルド出力で各 content script が約220KB（`react-dom` 533KB がほぼ各バンドルにインライン）。content script は独立注入で実行時にモジュール共有できず、splitChunks では消せない構造的重複。合計 js 約3.3MB。一行バー UI に react-dom は重い。
+- **Chrome/Firefox 切替が旧式**: `wext-manifest` の `__chrome__`/`__firefox__` プレフィックス＋`TARGET_BROWSER` 環境変数。
+- 2つの直交軸に分解できる: **軸A=ビルド/エントリ基盤**（手書き列挙・manifest 生成・クロスブラウザ）、**軸B=ランタイム重量**（React×15 重複、バー UI に react-dom が要るか）。
 
 ### その他の設計リスク（Codex 指摘・要対応）
 - **storage cache stale**: `eventPage.ts:21` は起動時に一度だけ `storage.sync.get(null)`。popup で projectName を変えても service worker 生存中は古い値を使う。
@@ -151,10 +160,25 @@ content script (薄いエントリ) ──scrape()──▶ scraper (純関数: 
 - 詳細ページ系を `createProduct: (ScrapedData)=>Product` を渡すだけの宣言的エントリへ（テンプレートメソッド→構成）。
 - 一覧ページ系（DMMBasket/DLsiteCart）の共通パターン（observer + per-item 検索 + リンク注入）を `ListPageContentScript` 基底に抽出。
 
-### Phase 5 — サイトレジストリ化（P5）
+### Phase 5 — サイトレジストリ化（P5・軸A の第一段）
 - `src/sites/registry.ts` に `{ service, hostPatterns, productType, entry }` を集約。
 - declarativeContent と manifest content_scripts の二重管理を解消（declarativeContent 廃止 or content_scripts 一本化）。
-- webpack entry をレジストリから生成できないか検討。
+- **webpack entry・manifest content_scripts をレジストリから生成**（手書き列挙・ドリフトを解消）。これは「ツールを変えずに今すぐ取れる軸A の最小解」。Phase 7 で基盤ごと移行する場合もレジストリは資産として引き継げる。
+
+### Phase 7（評価フェーズ）— ビルド/エントリ基盤の刷新検討（P8・軸A / ランタイム完了後）
+> ランタイムのリファクタ（Phase1〜5）が落ち着いた後に着手。ツール移行とコード書換を同時にやらない。
+- 3案を比較検証し ADR を書く（PoC は1サイトだけ移植して計測する）:
+  1. **webpack 維持 ＋ レジストリ駆動生成**（Phase 5 の延長。移行リスク最小）
+  2. **Vite + @crxjs/vite-plugin**（HMR・高速ビルド・entry 半自動）
+  3. **WXT（wxt.dev）**: `entrypoints/` ディレクトリ規約で content script を自動 discovery、manifest 自動生成、Chrome/Firefox クロスブラウザ、Vite 基盤。本プロジェクトの構造（多サイト content script ＋ 両ブラウザ）に最も合うが移行コスト最大。
+- 評価軸: 手書き管理の削減度／クロスブラウザ生成（現 `__chrome__`/`__firefox__` 置換）／HMR・DX／バンドルサイズ／移行コスト・後戻り可能性。
+- 推奨スタンス: WXT を本命候補として PoC、ただし採否は計測後。最低ラインは案1（レジストリ生成）で確実にドリフトを潰す。
+
+### Phase 8（評価フェーズ）— バー UI のランタイム軽量化（P8・軸B / Phase 7 と独立）
+- react-dom（533KB）が15 content script に重複インラインしている問題。バー（AlertBar / CreatePageBar）は一行 UI で react-dom はオーバースペック。
+- 選択肢: **Preact 代替**（`preact/compat` で React API ほぼ維持、数KB級）／**vanilla DOM 化**（最軽量だが書換量大）。
+- まず1サイトで PoC してバンドル削減量と保守性を計測。Phase 7（ビルド基盤）とは独立に差し込み可能。
+- 注意: popup は React のままでよい（重複問題は content script 側のみ）。
 
 ---
 
@@ -168,7 +192,9 @@ content script (薄いエントリ) ──scrape()──▶ scraper (純関数: 
 | 4 | Phase 6 フィクスチャ | 低 | 以降の安全網 |
 | 5 | Phase 3 scraper契約 | 中（Amazon 挙動変化注意） | 保守性↑ |
 | 6 | Phase 2 Product分離 | 中 | テスト容易化 |
-| 7 | Phase 4/5 共通化・registry | 中 | 拡張容易化 |
+| 7 | Phase 4/5 共通化・registry | 中 | 拡張容易化＋軸A 第一段 |
+| 8 | Phase 7 ビルド基盤刷新検討（WXT/Vite 比較・ADR） | 評価→大 | 手書き管理/ドリフト解消・DX↑ |
+| 9 | Phase 8 バー UI 軽量化（Preact/vanilla） | 評価→中 | バンドル激減（軸B・Phase7 と独立） |
 
 ## 5. リファクタとは別に切り出す Issue
 - `titleForSearch` の4語丸めによる「もう買ってるかも」false positive の仕様（`existsExactTitleMatch` を実際に使うか含め検討）。※トランスポート一本化（sendMessage）は本計画 Phase1.5 に確定済みのため Issue から除外。
