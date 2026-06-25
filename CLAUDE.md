@@ -6,6 +6,10 @@ manifest.jsonとpackage.jsonを更新した上でリリースのPRを作り、ma
 # 開発の作法
 - masterにpushしてはいけません。masterへの変更は必ずPRを作成してください
 - commitの前には必ずfmtすること
+- テスト戦略は [TEST_STRATEGY.md](TEST_STRATEGY.md) と [docs/adr/001-test-strategy-and-tdd.md](docs/adr/001-test-strategy-and-tdd.md) に従うこと
+- `npm test` / `npm run test:pr` はSmallテストのみ。外部サイト監視を含める場合は明示的に `npm run test:large*` または `npm run test:all` を使うこと
+- 新しいロジックは可能な限りSmallに寄せ、Red-Green-Refactorでテストファーストにすること
+- 実サイトで見つけたスクレイピング不具合は、可能ならDocument/Element fixtureのSmallテストに還元してから修正すること
 - 外部サーバーとのテストを確認する際には、時間節約のため失敗したものに限って実行すること
 - PR作成時にGitHub Actions上のClaude Code自動レビューは走りません。必要なレビューは `subagent-consultation` スキルを使って依頼し、criticalな指摘があれば修正してpushすること。
 # HTML要素が変わってスクレイピングに失敗する場合
@@ -94,7 +98,7 @@ Custom test pattern: "FANZA Video|Amazon.*English"
 ```
 
 #### デバッグテストの詳細機能
-`src/__tests__/medium/monitoring/fanza-debug.test.ts` の機能：
+`src/__tests__/large/monitoring/fanza-debug.test.ts` の機能：
 - HTML構造の詳細分析（文字数、プレビュー）
 - ボタン要素の全探索と詳細情報出力
 - テキストベースマッチング要素の検索

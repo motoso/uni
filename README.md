@@ -161,12 +161,13 @@ npm run package:firefox  # Firefox Add-ons用
 ### Test Commands
 
 - `npm run test:small` - Unit tests (Jest)
-- `npm run test:medium` - All integration tests (both Japan and Global sites)
-- `npm run test:medium:japan` - Japan-restricted tests requiring Japan IP (FANZA, Amazon)
-- `npm run test:medium:global` - Global-accessible tests (BookWalker, DLsite, etc.)
-- `npm test` - All standard tests (small + medium)
+- `npm test` / `npm run test:pr` - PR-safe tests (Small only)
+- `npm run test:all` - Small + Large tests
+- `npm run test:large` - External site monitoring tests (both Japan and Global sites)
+- `npm run test:large:japan` - Japan-restricted external site tests requiring Japan IP (FANZA, Amazon)
+- `npm run test:large:global` - Global-accessible external site tests (BookWalker, DLsite, etc.)
 
-**Note**: Japan-restricted tests may fail in CI due to geographic restrictions but are still executed with `continue-on-error` for monitoring purposes.
+See [TEST_STRATEGY.md](TEST_STRATEGY.md) for the t-wada test-size strategy and TDD policy. Large tests touch real external sites and may fail due to geographic restrictions, site-side bot detection, or temporary network conditions.
 
 ### Failed Test Selective Re-execution (Local Development)
 
@@ -238,7 +239,7 @@ npm run test:quick  # FANZA Video, FANZA Doujin, Amazon Englishのみ実行
 `playwright.config.ts` でCI環境用の設定を調整：
 ```typescript
 // デバッグテストのみ実行
-testMatch: process.env.CI ? '**/__tests__/medium/monitoring/fanza-debug.test.ts' : '**/__tests__/medium/**/*.test.ts'
+testMatch: process.env.CI ? '**/__tests__/large/monitoring/fanza-debug.test.ts' : '**/__tests__/large/**/*.test.ts'
 ```
 
 #### 3. GitHub Actionsログの確認
@@ -381,7 +382,7 @@ git push origin vpn-integration
 
 #### 4. Test Coverage
 The VPN workflow specifically targets:
-- **Japan-restricted tests** (`npm run test:medium:japan`):
+- **Japan-restricted tests** (`npm run test:large:japan`):
   - FANZA Video: `video.dmm.co.jp`
   - FANZA Doujin: `dmm.co.jp/dc/doujin`
   - FANZA Books: `book.dmm.co.jp`
@@ -390,7 +391,7 @@ The VPN workflow specifically targets:
 - IP verification and country detection
 - Proxy connectivity validation
 
-**Note**: Global tests (`npm run test:medium:global`) for DLsite, BookWalker, Melonbooks, etc. run in the standard CI environment without VPN, as they provide consistent content regardless of geographic location.
+**Note**: Global tests (`npm run test:large:global`) for DLsite, BookWalker, Melonbooks, etc. run in the standard CI environment without VPN, as they provide consistent content regardless of geographic location.
 
 ### Technical Implementation
 

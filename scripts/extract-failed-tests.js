@@ -96,25 +96,25 @@ function main() {
   } else {
     // Read from provided log content (for testing)
     logContent = `
-  1) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:28:7 › FANZA Video Scraping Logic › should successfully run FANZA Video scraping logic
+  1) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:28:7 › FANZA Video Scraping Logic › should successfully run FANZA Video scraping logic
     Error: expect(received).toBeTruthy()
 
-  2) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:67:7 › FANZA Doujin Scraping Logic › should successfully run FANZA Doujin scraping logic
+  2) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:67:7 › FANZA Doujin Scraping Logic › should successfully run FANZA Doujin scraping logic
     TypeError: Cannot read properties of null (reading 'title')
 
-  3) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:105:7 › FANZA Books Scraping Logic › should successfully run FANZA Books scraping logic
+  3) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:105:7 › FANZA Books Scraping Logic › should successfully run FANZA Books scraping logic
     Error: expect(received).toBeTruthy()
 
-  4) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:147:9 › Amazon Scraping Logic › should successfully run Amazon scraping logic - Amazon (English)
+  4) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:147:9 › Amazon Scraping Logic › should successfully run Amazon scraping logic - Amazon (English)
     Error: expect(received).toBeTruthy()
 
-  5) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:147:9 › Amazon Scraping Logic › should successfully run Amazon scraping logic - Amazon (Japanese)
+  5) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:147:9 › Amazon Scraping Logic › should successfully run Amazon scraping logic - Amazon (Japanese)
     Error: expect(received).toBeTruthy()
 
-  6) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:248:7 › DLsiteBooks Scraping Logic › should successfully run DLsiteBooks scraping logic
+  6) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:248:7 › DLsiteBooks Scraping Logic › should successfully run DLsiteBooks scraping logic
     Error: expect(received).toBeTruthy()
 
-  7) [chromium] › src/__tests__/medium/monitoring/scraping-logic.test.ts:317:7 › DLsiteManiax Scraping Logic › should successfully run DLsiteManiax scraping logic
+  7) [chromium] › src/__tests__/large/monitoring/scraping-logic.test.ts:317:7 › DLsiteManiax Scraping Logic › should successfully run DLsiteManiax scraping logic
     Error: expect(received).toBeTruthy()
     `;
   }
