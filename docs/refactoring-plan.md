@@ -9,7 +9,7 @@
 2. **「もう買ってるかも」の false positive 厳密化は別 Issue**。今回のリファクタは挙動を変えず現状の `count >= 1` を維持。`existsExactTitleMatch` の実装・4語丸めの見直しは仕様検討を要するため切り出す。
 3. **Amazon は「確認済み DOM バリアントごとに1セレクタ」**。投機的な7連鎖は全廃。原則1セレクタとし、実在が確認できる複数レイアウト（箇条書き `#detailBullets_feature_div` / テーブル `#productDetails...`）のみそれぞれ1セレクタを許容（CLAUDE.md の "必須の場合" に該当）。Phase6 のフィクスチャ後に実施。
 4. **Phase0 のデバッグ資産は monitoring 配下に集約**。`*-specific-debug.test.ts` は残すが debug 用ディレクトリへ整理。PNG/curl/失敗 txt は除去・gitignore。
-5. **エントリポイント／ビルド基盤の刷新は評価フェーズとして計画化（Phase 7）**。「webpack 維持＋レジストリ生成 / Vite+crxjs / WXT」を比較し ADR で決める。WXT を本命候補に PoC するが採否は計測後、最低ラインはレジストリ生成でドリフト解消。ランタイム（Phase1〜5）完了後に着手。
+5. **エントリポイント／ビルド基盤は「判断（Phase 7a）」と「本移行（Phase 7b）」を分離**。判断（1サイト PoC＋ADR で webpack 維持＋レジストリ生成 / Vite+crxjs / WXT を比較）は **Phase 1 直後の早期**に置き、Phase 5 のスコープを左右させる。本移行は **Phase 6 のテスト網の後**に挙動凍結で実施（webpack 以外を選んだ場合のみ）。WXT が本命候補だが採否は計測後。
 6. **バー UI のランタイム軽量化も評価フェーズとして計画化（Phase 8）**。react-dom×15 重複を Preact 代替 or vanilla 化で削減。Phase 7 とは独立に進められる。content script 側のみ対象（popup は React 維持）。
 
 ## 0. 背景とアーキテクチャ概観
@@ -114,8 +114,9 @@ content script (薄いエントリ) ──scrape()──▶ scraper (純関数: 
 
 ## 3. フェーズ計画（Codex レビュー反映・確定）
 
-> 着手順: **Phase0 → Phase1 → Phase1.5 → Phase6(前倒し) → Phase3 → Phase2 → Phase4/5**
-> ポイント: 挙動が変わりうる改修（Amazon fallback 削減・Product 分解）の**前に**フィクスチャテストで現状を固定する。
+> 着手順: **Phase0 → Phase1 → Phase7a(基盤判断 PoC/ADR) → Phase1.5 → Phase6(前倒し) → Phase3 → Phase2 → Phase4 → Phase5(判断に従属) → Phase7b(本移行) → Phase8**
+> ポイント1: 挙動が変わりうる改修（Amazon fallback 削減・Product 分解）の**前に**フィクスチャテストで現状を固定する。
+> ポイント2: ビルド基盤の**判断（7a）は早期**に（Phase5 の作り込みを左右するため）、**本移行（7b）はテスト網の後**に。判断と本移行を分離する。詳細は下記「フェーズ順序の根拠」を参照。
 
 ### Phase 0 — リポジトリ衛生（低リスク・即効）
 - tracked な生成物を除去: `git rm --cached ci-failed-tests.txt failed-tests-patterns.txt`。
@@ -160,19 +161,27 @@ content script (薄いエントリ) ──scrape()──▶ scraper (純関数: 
 - 詳細ページ系を `createProduct: (ScrapedData)=>Product` を渡すだけの宣言的エントリへ（テンプレートメソッド→構成）。
 - 一覧ページ系（DMMBasket/DLsiteCart）の共通パターン（observer + per-item 検索 + リンク注入）を `ListPageContentScript` 基底に抽出。
 
-### Phase 5 — サイトレジストリ化（P5・軸A の第一段）
-- `src/sites/registry.ts` に `{ service, hostPatterns, productType, entry }` を集約。
-- declarativeContent と manifest content_scripts の二重管理を解消（declarativeContent 廃止 or content_scripts 一本化）。
-- **webpack entry・manifest content_scripts をレジストリから生成**（手書き列挙・ドリフトを解消）。これは「ツールを変えずに今すぐ取れる軸A の最小解」。Phase 7 で基盤ごと移行する場合もレジストリは資産として引き継げる。
-
-### Phase 7（評価フェーズ）— ビルド/エントリ基盤の刷新検討（P8・軸A / ランタイム完了後）
-> ランタイムのリファクタ（Phase1〜5）が落ち着いた後に着手。ツール移行とコード書換を同時にやらない。
-- 3案を比較検証し ADR を書く（PoC は1サイトだけ移植して計測する）:
-  1. **webpack 維持 ＋ レジストリ駆動生成**（Phase 5 の延長。移行リスク最小）
+### Phase 7a（評価・判断フェーズ）— ビルド/エントリ基盤の方針決定（P8・軸A / Phase1 直後・早期）
+> **本移行ではなく「どの基盤に行くか」を1サイト PoC で決めて ADR に落とすだけ**。安価で、Phase 5 の作り込み方を左右するため早期に置く。
+- 3案を1サイトだけ移植して計測・比較:
+  1. **webpack 維持 ＋ レジストリ駆動生成**（移行リスク最小）
   2. **Vite + @crxjs/vite-plugin**（HMR・高速ビルド・entry 半自動）
-  3. **WXT（wxt.dev）**: `entrypoints/` ディレクトリ規約で content script を自動 discovery、manifest 自動生成、Chrome/Firefox クロスブラウザ、Vite 基盤。本プロジェクトの構造（多サイト content script ＋ 両ブラウザ）に最も合うが移行コスト最大。
+  3. **WXT（wxt.dev）**: `entrypoints/` 規約で content script を自動 discovery、manifest 自動生成、Chrome/Firefox クロスブラウザ、Vite 基盤。本プロジェクトの構造（多サイト content script ＋ 両ブラウザ）に最も合うが移行コスト最大。
 - 評価軸: 手書き管理の削減度／クロスブラウザ生成（現 `__chrome__`/`__firefox__` 置換）／HMR・DX／バンドルサイズ／移行コスト・後戻り可能性。
-- 推奨スタンス: WXT を本命候補として PoC、ただし採否は計測後。最低ラインは案1（レジストリ生成）で確実にドリフトを潰す。
+- **アウトプット**: ADR（採用案＋根拠）。これにより Phase 5 と Phase 7b のスコープが確定する。
+- 推奨スタンス: WXT を本命候補として PoC、ただし採否は計測後。
+
+### Phase 5 — サイトレジストリ化（P5・軸A / **Phase 7a の判断に従属**）
+- `src/sites/registry.ts` に `{ service, hostPatterns, productType, entry }` を集約（どの基盤でも資産として生きる）。
+- declarativeContent と manifest content_scripts の二重管理を解消。
+- **スコープは 7a の決定次第**:
+  - 7a=「webpack 維持」なら **entry/manifest をレジストリから生成する自前ジェネレータを実装**（軸A の本命対応）。
+  - 7a=「WXT/Vite 採用」なら **自前ジェネレータは作らない**（フレームワークが entry/manifest を担うため）。レジストリは productFactory 等のドメイン用途に縮小し、Phase 7b で WXT の `entrypoints/` 規約へ寄せる。
+
+### Phase 7b（本移行フェーズ）— ビルド基盤の移行実施（軸A / **テスト網の後**・任意）
+> 7a で webpack 以外を選んだ場合のみ。Phase 6 のフィクスチャ網が揃ってから着手し、**挙動を凍結したまま（ファイル移動とビルド差し替えのみ・ロジック変更なし）**移行。Chrome/Firefox 両方で読み込み確認してから完了とする。
+- `new X().execute()` の副作用エントリを採用基盤の規約（例: WXT の `defineContentScript`）へ移す。`BaseContentScript` クラスや scraper はそのまま再利用。
+- 2つの大きな変数を同時に動かさない（ランタイムは Phase1〜5 で安定済み・テスト済みであること）。
 
 ### Phase 8（評価フェーズ）— バー UI のランタイム軽量化（P8・軸B / Phase 7 と独立）
 - react-dom（533KB）が15 content script に重複インラインしている問題。バー（AlertBar / CreatePageBar）は一行 UI で react-dom はオーバースペック。
@@ -188,13 +197,21 @@ content script (薄いエントリ) ──scrape()──▶ scraper (純関数: 
 |---|---|---|---|
 | 1 | Phase 0 衛生 | 極低 | diff 可読性↑ |
 | 2 | **Phase 1 DTO化** | 中（境界変更） | **最大の負債解消＋死蔵バグ除去** |
-| 3 | Phase 1.5 経路統合 | 中 | 重複・エラー非対称解消 |
-| 4 | Phase 6 フィクスチャ | 低 | 以降の安全網 |
-| 5 | Phase 3 scraper契約 | 中（Amazon 挙動変化注意） | 保守性↑ |
-| 6 | Phase 2 Product分離 | 中 | テスト容易化 |
-| 7 | Phase 4/5 共通化・registry | 中 | 拡張容易化＋軸A 第一段 |
-| 8 | Phase 7 ビルド基盤刷新検討（WXT/Vite 比較・ADR） | 評価→大 | 手書き管理/ドリフト解消・DX↑ |
-| 9 | Phase 8 バー UI 軽量化（Preact/vanilla） | 評価→中 | バンドル激減（軸B・Phase7 と独立） |
+| 3 | **Phase 7a 基盤判断（PoC/ADR）** | 低（評価のみ） | Phase5/7b のスコープ確定・DX 方針決定 |
+| 4 | Phase 1.5 経路統合 | 中 | 重複・エラー非対称解消 |
+| 5 | Phase 6 フィクスチャ | 低 | 以降の安全網 |
+| 6 | Phase 3 scraper契約 | 中（Amazon 挙動変化注意） | 保守性↑ |
+| 7 | Phase 2 Product分離 | 中 | テスト容易化 |
+| 8 | Phase 4 content script 共通化 | 中 | 拡張容易化 |
+| 9 | Phase 5 registry（7a に従属） | 中 | ドリフト解消・追加箇所集約 |
+| 10 | Phase 7b 本移行（7a で非 webpack 選択時のみ） | 大 | 手書き管理撤廃・HMR/DX↑ |
+| 11 | Phase 8 バー UI 軽量化（Preact/vanilla） | 評価→中 | バンドル激減（軸B・Phase7 と独立） |
+
+### フェーズ順序の根拠（判断と本移行の分離）
+- **判断（7a）を早期に置く理由**: WXT/Vite を採ると entry/manifest 生成はフレームワークが担うため、Phase 5 で自前ジェネレータを作り込むと**後で丸ごと捨てる**ことになる。7a と最も強く結合するのは Phase 5。よって 7a を Phase 5 の前に置き、Phase 5 のスコープを判断に従属させる。
+- **本移行（7b）を後に置く理由**: ランタイムがまだ不安定／無テストの段階で基盤移行も重ねると「移行のせい？リファクタのせい？」が切り分け不能。Phase 6 のテスト網を張り、ランタイムを Phase1〜5 で安定させてから、挙動凍結で移行する。
+- **Phase 1 を判断より前に置く理由**: P1 の死蔵バグ一掃は高価値かつ基盤非依存。早期に出す。
+- **再利用される資産**: `BaseContentScript`・scraper 純関数・`src/sites/registry.ts` のドメイン部分はどの基盤でも生き残るため、7b 採否に関わらず先行して整備してよい。捨てになりうるのは「自前 manifest/entry ジェネレータ」だけ。
 
 ## 5. リファクタとは別に切り出す Issue
 - `titleForSearch` の4語丸めによる「もう買ってるかも」false positive の仕様（`existsExactTitleMatch` を実際に使うか含め検討）。※トランスポート一本化（sendMessage）は本計画 Phase1.5 に確定済みのため Issue から除外。
