@@ -10,13 +10,19 @@ const mockStorage = {
   local: {
     get: jest.fn<() => Promise<{ [s: string]: any }>>().mockResolvedValue({}),
     set: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-  }
+  },
 };
 
 const browser = {
   storage: mockStorage,
   runtime: {
     sendMessage: jest.fn(),
+    onConnect: {
+      addListener: jest.fn(),
+    },
+    onInstalled: {
+      addListener: jest.fn(),
+    },
     onMessage: {
       addListener: jest.fn(),
     },
@@ -27,7 +33,7 @@ const browser = {
       },
       disconnect: jest.fn(),
     })),
-  }
+  },
 };
 
 // グローバルbrowserとして利用可能にする

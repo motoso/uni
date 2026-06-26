@@ -8,11 +8,17 @@ global.browser = {
       // localストレージで使われているAPIがあればここに追加
       get: jest.fn().mockResolvedValue({}),
       set: jest.fn().mockResolvedValue(undefined),
-    }
+    },
   },
   // 他のbrowser API（例: runtime, tabsなど）も必要に応じてモックを追加
   runtime: {
     sendMessage: jest.fn(),
+    onConnect: {
+      addListener: jest.fn(),
+    },
+    onInstalled: {
+      addListener: jest.fn(),
+    },
     onMessage: {
       addListener: jest.fn(),
     },

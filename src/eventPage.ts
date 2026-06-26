@@ -18,59 +18,75 @@ const getProjectName = async (): Promise<string> => {
   return (items[StorageKeyProjectName] as string) ?? "";
 };
 
+type SearchDependencies = {
+  getProjectName: () => Promise<string>;
+  search: (
+    projectName: string,
+    query: string,
+  ) => Promise<GetPagesSearchResponseInterface>;
+};
+
+export async function handleBibliographySearchMessage(
+  msg: UniPostMessage,
+  postMessage: (message: UniPostMessage) => void,
+  dependencies: SearchDependencies = {
+    getProjectName,
+    search: performActualScrapboxSearch,
+  },
+): Promise<void> {
+  if (msg.command !== UniCommand.sendBibliography) {
+    return;
+  }
+
+  try {
+    if (!msg.query) {
+      throw new Error("Missing Scrapbox search query");
+    }
+
+    const currentProjectName = await dependencies.getProjectName();
+    const rawRes = await dependencies.search(currentProjectName, msg.query);
+
+    const pages = rawRes.pages.map((pageData) => {
+      return Page.make(
+        pageData.title,
+        pageData.image,
+        pageData.lines.join("\n"),
+        currentProjectName,
+      );
+    });
+    const searchResult = SearchResult.make(
+      rawRes.count,
+      rawRes.projectName, // This should be currentProjectName or rawRes.projectName if available and reliable
+      rawRes.searchQuery,
+      pages,
+    );
+
+    console.log("[eventPage] Search successful (via onConnect):", searchResult);
+    if (searchResult.count >= 1) {
+      postMessage({
+        command: UniCommand.existsPage,
+        searchResult: searchResult,
+      });
+    } else {
+      postMessage({
+        command: UniCommand.createPage,
+        searchResult: searchResult,
+      });
+    }
+  } catch (error) {
+    console.error("[eventPage] Error during search (via onConnect):", error);
+    postMessage({
+      command: UniCommand.searchError,
+      error: toMessageError(error),
+    });
+  }
+}
+
 browser.runtime.onConnect.addListener((port: UniPort) => {
   port.onMessage.addListener(async (msg: UniPostMessage) => {
-    if (msg.command === UniCommand.sendBibliography) {
-      try {
-        if (!msg.query) {
-          throw new Error("Missing Scrapbox search query");
-        }
-
-        const currentProjectName = await getProjectName();
-        const rawRes: GetPagesSearchResponseInterface =
-          await performActualScrapboxSearch(currentProjectName, msg.query);
-
-        const pages = rawRes.pages.map((pageData) => {
-          return Page.make(
-            pageData.title,
-            pageData.image,
-            pageData.lines.join("\n"),
-            currentProjectName,
-          );
-        });
-        const searchResult = SearchResult.make(
-          rawRes.count,
-          rawRes.projectName, // This should be currentProjectName or rawRes.projectName if available and reliable
-          rawRes.searchQuery,
-          pages,
-        );
-
-        console.log(
-          "[eventPage] Search successful (via onConnect):",
-          searchResult,
-        );
-        if (searchResult.count >= 1) {
-          uniPostMessage(port, {
-            command: UniCommand.existsPage,
-            searchResult: searchResult,
-          });
-        } else {
-          uniPostMessage(port, {
-            command: UniCommand.createPage,
-            searchResult: searchResult,
-          });
-        }
-      } catch (error) {
-        console.error(
-          "[eventPage] Error during search (via onConnect):",
-          error,
-        );
-        uniPostMessage(port, {
-          command: UniCommand.searchError,
-          error: toMessageError(error),
-        });
-      }
-    }
+    await handleBibliographySearchMessage(msg, (message) => {
+      uniPostMessage(port, message);
+    });
   });
 });
 
