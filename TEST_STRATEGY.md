@@ -1,129 +1,60 @@
-# テストサイズ戦略
+# テスト戦略
 
-このプロジェクトでは、t-wadaさんのテストサイズ戦略を採用しています。
+このプロジェクトでは、t-wada 流のテストサイズ戦略と Kent Beck の TDD (Red-Green-Refactor) を採用します。
+
+詳細な意思決定は [docs/adr/001-test-strategy-and-tdd.md](docs/adr/001-test-strategy-and-tdd.md) を参照してください。
+
+## 基本方針
+
+- 常に可能な限り左側 (Small) のテストを書く
+- 新しいロジックは、先に仕様を表すテストを書いてから実装する
+- DOM や外部サイトに触る前に、可能な限り純粋な parsing / normalization / mapping に切り出す
+- 実外部サイトを叩くテストは Large として扱い、PR の高速フィードバックとは分離する
+- Large の失敗は「プロダクトの regression」と「サイト変更・地域差・ネットワーク制限」を切り分けて扱う
 
 ## テストサイズ定義
 
-### Small テスト
-- **実行環境**: 単一プロセス
-- **制約**: ネットワーク/DB/FS アクセス不可
-- **特徴**: 高速、安定、決定的
-- **対象**: 純粋な関数、ロジック、単体テスト
+| サイズ | ディレクトリ | 実行コマンド | 制約 | 適用対象 |
+|---|---|---|---|---|
+| Small | `src/__tests__/small/` | `npm run test:small` | 単一プロセス。network / FS / 実ブラウザ / 外部 API なし | Product の placeholder 展開、タイトル正規化、popup の正規化、scraper の純粋ロジック |
+| Medium | `src/__tests__/medium/` | 未採用 | 単一マシン。localhost / fixture / 実ブラウザ可。実外部サイトなし | 将来の拡張機能 UI 統合、ローカル fixture HTML に対する ContentScript 検証 |
+| Large | `src/__tests__/large/` | `npm run test:large*` | 実外部サイト / VPN / 地理差あり | サイト監視、実 DOM セレクター検証、年齢認証・地域差の監視 |
 
-### Medium テスト
-- **実行環境**: 単一マシン
-- **制約**: localhost ネットワーク/DB/FS 利用可
-- **特徴**: 統合的、実環境に近い
-- **対象**: DOM操作、実サイトアクセス、統合テスト
+## 実行コマンド
 
-### Large テスト
-- **実行環境**: 複数マシン
-- **制約**: 真の外部システム利用
-- **特徴**: エンドツーエンド、高コスト
-- **対象**: クリティカルユーザージャーニー
-
-## 基本原則
-
-**常に可能な限り左側（Small）のテストを書く**
-
-- 統合テストでも Small で書けるなら Small にする
-- E2E テストでも Medium で十分なら Medium にする
-- Large は真に必要な場合のみ
-
-## ディレクトリ構造
-
-```
-src/__tests__/
-├── small/                           # Small: 高速・安定なユニットテスト
-│   ├── product/
-│   │   ├── title-normalization.test.ts    # Doujinshi タイトル正規化
-│   │   ├── placeholder-film.test.ts       # Film プレースホルダー置換
-│   │   ├── placeholder-doujinshi.test.ts  # Doujinshi プレースホルダー置換
-│   │   ├── placeholder-book.test.ts       # Book プレースホルダー置換
-│   │   └── placeholder-asmr.test.ts       # ASMR プレースホルダー置換
-│   └── scraping/                          # スクレイピング関数単体テスト
-│       └── [サイト名]-scraper.test.ts
-├── medium/                          # Medium: 実環境アクセスあり統合テスト
-│   └── monitoring/
-│       ├── shared.ts                      # 共通ヘルパー関数・型定義
-│       ├── static-sites.test.ts           # 静的サイト監視テスト
-│       ├── spa-sites.test.ts              # SPA サイト監視テスト
-│       └── scraping-logic.test.ts         # スクレイピング統合テスト
-└── large/                           # Large: 必要に応じて追加
-    └── critical-user-journeys.test.ts    # クリティカルユーザージャーニー
+```bash
+npm test                    # PR-safe: Small のみ
+npm run test:pr             # npm test と同じ。PR 前の高速確認
+npm run test:small          # Jest unit tests
+npm run test:all            # Small -> Large。外部サイトまで明示的に確認する
+npm run test:large          # Playwright monitoring tests
+npm run test:large:global   # VPN 不要の外部サイト監視
+npm run test:large:japan    # 日本 IP 前提の外部サイト監視
+npm run test:failed-only    # 抽出済みの失敗 Large テストだけ再実行
 ```
 
-## テスト実行コマンド
+## TDD の適用範囲
 
-### 開発時の推奨順序
+| 領域 | 方針 |
+|---|---|
+| Product / placeholder / title normalization | Small でテストファースト |
+| Popup や設定値の変換ロジック | Small でテストファースト |
+| Scraper の parsing ロジック | 実 DOM 調査後、可能なら Document / Element fixture で Small 化してから実装 |
+| ContentScript の DOM 挿入位置 | Medium 化できるなら fixture HTML で検証。実サイト差分は Large で監視 |
+| 年齢認証、地域差、サイト構造監視 | Large。修正前に実 HTML を確認し、想像で selector を書かない |
 
-1. **Small テスト** (高速フィードバック)
-   ```bash
-   npm run test:small
-   ```
+## CI ポリシー
 
-2. **Medium テスト** (統合確認)
-   ```bash
-   npm run test:medium
-   ```
+- PR / push の高速 CI は Small を最速で実行する
+- Large は日次 CI と手動 workflow で実行する
+- Japan-restricted な Large は VPN 経由で実行する
+- Large の 403 / ログイン要求 / 地域差は、失敗として扱う前に環境要因かを切り分ける
+- Large で検出したサイト構造変更は、可能な限り Small の parser テストにも還元する
 
-3. **All テスト** (Small → Medium の順)
-   ```bash
-   npm test
-   ```
+## テストで避けること
 
-### CI での実行順序
-
-1. **小さいテストファースト**: Small テスト → Medium テストの順で実行
-2. **高速フィードバック**: Small で失敗したら Medium をスキップ
-3. **並列実行なし**: Medium は外部システムアクセスのため、Small成功後に実行
-
-## テスト技術選択
-
-- **Small**: Jest (単体テスト、モック)
-- **Medium**: Playwright (ブラウザ統合、実サイトアクセス)
-- **Large**: E2E テストフレームワーク (必要に応じて)
-
-## 期待効果
-
-- **開発速度向上**: 高速な Small テストで即座にフィードバック
-- **安定性向上**: Small テストは外部依存なしで決定的
-- **コスト効率**: 右側（Large）テストの削減でCI時間短縮
-- **保守性向上**: テスト責務が明確に分離
-
-## ガイドライン
-
-### Small テストを書くべき場合
-- 純粋な関数のテスト
-- ビジネスロジックのテスト
-- プレースホルダー置換等の文字列処理
-- 設定値の検証
-
-### Medium テストを書くべき場合
-- DOM 操作の検証
-- 実際のサイトからのスクレイピング
-- ブラウザ環境での動作確認
-- ContentScript の統合テスト
-
-### Large テストを書くべき場合
-- 複数システムを跨ぐワークフロー
-- 本番環境でのみ発生する問題の検証
-- クリティカルパスの保証
-
-## 移行経緯
-
-- **前**: `Product.test.ts` (843行) + `monitoring.test.ts` (1,166行)
-- **後**: サイズ別に分割、責務明確化、完全置き換え
-- **利点**:
-  - 実行時間短縮 (Small: 2秒)
-  - CI フィードバック高速化 (Small → Medium)
-  - メンテナンス性向上 (機能別分割)
-  - t-wada の左寄せ原則に準拠
-
-## コマンド対応表
-
-| 旧コマンド | 新コマンド | 説明 |
-|-----------|-----------|------|
-| `npm test` | `npm test` | **Small → Medium の順実行** |
-| `npm run test:spa` | `npm run test:medium` | Medium テスト実行 |
-| - | `npm run test:small` | Small テスト実行 |
+- 実装をコピーしただけの self-fulfilling test
+- 外部サイトの一時的な失敗をプロダクト regression と混同すること
+- selector の想像実装
+- 必要以上の fallback。サイト構造が変わったら Large が落ちる方が調査しやすい
+- Large を PR の標準確認として常用すること
