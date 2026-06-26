@@ -5,7 +5,7 @@ import DLsiteProduct from "../DLsiteProduct"; // Changed import
 import { AcceptedService } from "../constant";
 import { createScrapboxPageUrl } from "../organism/CreatePageBar";
 import { StorageKeyProjectName } from "../chromeApi";
-import Page from "../scrapbox/Page";
+import { ScrapboxPageDto } from "../scrapbox/searchDtos";
 
 type ScrapboxLinksDisplayProps = {
   existPages: { name: string; url: string }[];
@@ -99,10 +99,7 @@ const DLsiteCartChecker = () => {
             itemUrl || window.location.href,
           );
 
-          const searchResult = await apiClient.search({
-            product,
-            projectName: currentProjectName,
-          });
+          const searchResult = await apiClient.search({ product });
           console.log(
             `[DLsite Cart Checker] searchResult for "${title}":`,
             searchResult,
@@ -141,7 +138,7 @@ const DLsiteCartChecker = () => {
             }
 
             const root = createRoot(linksContainer);
-            const existPages = searchResult.pages.map((p: Page) => ({
+            const existPages = searchResult.pages.map((p: ScrapboxPageDto) => ({
               name: p.title,
               url: p.pageUrl,
             }));

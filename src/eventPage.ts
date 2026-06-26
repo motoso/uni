@@ -1,17 +1,17 @@
 // Listen to messages sent from other parts of the extension.
-import { UniCommand, UniPort } from "./constant";
-import {
-  StorageKeyProjectName,
-  uniPostMessage,
-  UniPostMessage,
-} from "./chromeApi";
-import Page from "./scrapbox/Page"; // Import Page
-import SearchResult, {
-  GetPagesSearchResponseInterface,
-} from "./scrapbox/SearchResult"; // Import SearchResult and interface
-import ky from "ky"; // Import ky
+import { StorageKeyProjectName } from "./chromeApi";
+import ky from "ky";
 import browser from "webextension-polyfill";
 import { SCRAPBOX_BASE_URL } from "./scrapbox/constants";
+import { scrapboxPageUrl } from "./scrapbox/scrapboxPageUrl";
+import {
+  MessageErrorDto,
+  ScrapboxSearchApiResponseDto,
+  SearchBibliographyAction,
+  SearchBibliographyRequestDto,
+  SearchBibliographyResponseDto,
+  SearchResultDto,
+} from "./scrapbox/searchDtos";
 
 const getProjectName = async (): Promise<string> => {
   const items = await browser.storage.sync.get([StorageKeyProjectName]);
@@ -23,71 +23,46 @@ type SearchDependencies = {
   search: (
     projectName: string,
     query: string,
-  ) => Promise<GetPagesSearchResponseInterface>;
+  ) => Promise<ScrapboxSearchApiResponseDto>;
 };
 
 export async function handleBibliographySearchMessage(
-  msg: UniPostMessage,
-  postMessage: (message: UniPostMessage) => void,
+  request: Partial<SearchBibliographyRequestDto>,
   dependencies: SearchDependencies = {
     getProjectName,
     search: performActualScrapboxSearch,
   },
-): Promise<void> {
-  if (msg.command !== UniCommand.sendBibliography) {
-    return;
-  }
-
+): Promise<SearchBibliographyResponseDto> {
   try {
-    if (!msg.query) {
+    if (!request.query) {
       throw new Error("Missing Scrapbox search query");
     }
 
     const currentProjectName = await dependencies.getProjectName();
-    const rawRes = await dependencies.search(currentProjectName, msg.query);
+    const rawRes = await dependencies.search(currentProjectName, request.query);
+    const searchResult = toSearchResultDto(rawRes, currentProjectName);
 
-    const pages = rawRes.pages.map((pageData) => {
-      return Page.make(
-        pageData.title,
-        pageData.image,
-        pageData.lines.join("\n"),
-        currentProjectName,
-      );
-    });
-    const searchResult = SearchResult.make(
-      rawRes.count,
-      rawRes.projectName, // This should be currentProjectName or rawRes.projectName if available and reliable
-      rawRes.searchQuery,
-      pages,
-    );
-
-    console.log("[eventPage] Search successful (via onConnect):", searchResult);
-    if (searchResult.count >= 1) {
-      postMessage({
-        command: UniCommand.existsPage,
-        searchResult: searchResult,
-      });
-    } else {
-      postMessage({
-        command: UniCommand.createPage,
-        searchResult: searchResult,
-      });
-    }
+    console.log("[eventPage] Search successful:", searchResult);
+    return {
+      status: "ok",
+      projectName: currentProjectName,
+      searchResult,
+    };
   } catch (error) {
-    console.error("[eventPage] Error during search (via onConnect):", error);
-    postMessage({
-      command: UniCommand.searchError,
+    console.error("[eventPage] Error during search:", error);
+    return {
+      status: "error",
       error: toMessageError(error),
-    });
+    };
   }
 }
 
-browser.runtime.onConnect.addListener((port: UniPort) => {
-  port.onMessage.addListener(async (msg: UniPostMessage) => {
-    await handleBibliographySearchMessage(msg, (message) => {
-      uniPostMessage(port, message);
-    });
-  });
+browser.runtime.onMessage.addListener((request) => {
+  if (isSearchBibliographyRequest(request)) {
+    return handleBibliographySearchMessage(request);
+  }
+
+  return undefined;
 });
 
 // 拡張のボタンのpopupを有効にする条件のルール (Chrome only)
@@ -140,7 +115,7 @@ browser.runtime.onInstalled.addListener((details) => {
 async function performActualScrapboxSearch(
   projectName: string,
   query: string,
-): Promise<GetPagesSearchResponseInterface> {
+): Promise<ScrapboxSearchApiResponseDto> {
   const params = new URLSearchParams({
     skip: "0",
     sort: "updated",
@@ -152,35 +127,36 @@ async function performActualScrapboxSearch(
   return ky.get(searchUrl, { credentials: "include" }).json();
 }
 
-function toMessageError(error: unknown): { message: string; name?: string } {
+function isSearchBibliographyRequest(
+  request: unknown,
+): request is SearchBibliographyRequestDto {
+  return (
+    typeof request === "object" &&
+    request !== null &&
+    (request as { action?: unknown }).action === SearchBibliographyAction
+  );
+}
+
+function toSearchResultDto(
+  rawRes: ScrapboxSearchApiResponseDto,
+  projectName: string,
+): SearchResultDto {
+  return {
+    count: rawRes.count,
+    projectName,
+    searchQuery: rawRes.searchQuery,
+    pages: rawRes.pages.map((pageData) => ({
+      title: pageData.title,
+      imageUrl: pageData.image,
+      description: pageData.lines.join("\n"),
+      pageUrl: scrapboxPageUrl(projectName, pageData.title),
+    })),
+  };
+}
+
+function toMessageError(error: unknown): MessageErrorDto {
   if (error instanceof Error) {
     return { message: error.message, name: error.name };
   }
   return { message: String(error) };
 }
-
-// Listener for search requests from content scripts
-browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
-  if (request.action === "searchScrapbox") {
-    const { projectName, query } = request;
-    performActualScrapboxSearch(projectName, query)
-      .then((data) => {
-        console.log("[eventPage] Search successful (via onMessage):", data);
-        sendResponse({ success: true, data });
-      })
-      .catch((error) => {
-        console.error(
-          "[eventPage] Error searching Scrapbox (via onMessage):",
-          error,
-        );
-        sendResponse({
-          success: false,
-          error: { message: error.message, name: error.name },
-        });
-      });
-    return true; // Indicates that the response is sent asynchronously
-  }
-  // Ensure other potential messages are handled or this listener is specific enough
-  // If this listener ONLY handles 'searchScrapbox', then it's fine.
-  // Otherwise, ensure 'return true' is only called if a response will be sent asynchronously.
-});

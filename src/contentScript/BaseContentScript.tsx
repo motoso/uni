@@ -1,17 +1,16 @@
-import { AcceptedService, UniCommand } from "../constant";
-import {
-  StorageKeyProjectName,
-  UniPostMessage,
-  uniPostMessage,
-} from "../chromeApi";
-import SearchResult from "../scrapbox/SearchResult";
+import { AcceptedService } from "../constant";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { CreatePageBar } from "../organism/CreatePageBar";
 import { AlertBar } from "../organism/AlertBar";
 import Product from "../Product";
 import browser from "webextension-polyfill";
-import { SCRAPBOX_BASE_URL } from "../scrapbox/constants";
+import {
+  SearchBibliographyAction,
+  SearchBibliographyRequestDto,
+  SearchBibliographyResponseDto,
+  SearchResultDto,
+} from "../scrapbox/searchDtos";
 
 /**
  * Content Scriptに必要な処理を集約したクラス
@@ -41,41 +40,45 @@ export abstract class BaseContentScript {
       return;
     }
 
-    this.searchAndRender(product);
+    void this.searchAndRender(product);
   }
 
-  protected searchAndRender(product: Product): void {
-    // コネクションを張って、存在しているかどうかを出す
-    const port = browser.runtime.connect({ name: this.SERVICE });
-    uniPostMessage(port, {
-      command: UniCommand.sendBibliography,
-      query: product.titleForSearch,
-    });
+  protected async searchAndRender(product: Product): Promise<void> {
+    try {
+      const response = (await browser.runtime.sendMessage(
+        this.createSearchRequest(product),
+      )) as SearchBibliographyResponseDto;
 
-    // 返答待ち
-    port.onMessage.addListener(async (msg: UniPostMessage) => {
-      try {
-        if (msg.command === UniCommand.searchError) {
-          console.error("[uni] Scrapbox search failed:", msg.error);
-          return;
-        }
-
-        const items = await browser.storage.sync.get([StorageKeyProjectName]);
-        const projectName = items[StorageKeyProjectName] as string;
-        if (msg.command === UniCommand.existsPage) {
-          // Message passingで型の情報がなくなっているので修正
-          const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-          await this.createAlertBar(result, product, projectName);
-        } else if (msg.command === UniCommand.createPage) {
-          // Message passingで型の情報がなくなっているので修正
-          const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-          await this.createPageBar(result, product, projectName);
-        }
-      } finally {
-        // 処理が終了したので切断する
-        port.disconnect();
+      if (response.status === "error") {
+        console.error("[uni] Scrapbox search failed:", response.error);
+        return;
       }
-    });
+
+      if (response.searchResult.count >= 1) {
+        await this.createAlertBar(
+          response.searchResult,
+          product,
+          response.projectName,
+        );
+      } else {
+        await this.createPageBar(
+          response.searchResult,
+          product,
+          response.projectName,
+        );
+      }
+    } catch (error) {
+      console.error("[uni] Scrapbox search failed:", error);
+    }
+  }
+
+  protected createSearchRequest(
+    product: Product,
+  ): SearchBibliographyRequestDto {
+    return {
+      action: SearchBibliographyAction,
+      query: product.titleForSearch,
+    };
   }
 
   /**
@@ -86,7 +89,7 @@ export abstract class BaseContentScript {
    * @private
    */
   protected async createAlertBar(
-    result: SearchResult,
+    result: SearchResultDto,
     product: Product,
     projectName: string,
   ): Promise<void> {
@@ -95,12 +98,7 @@ export abstract class BaseContentScript {
     const existPages = result.pages.map((p) => {
       return {
         name: "/" + projectName + "/" + p.title,
-        url:
-          SCRAPBOX_BASE_URL +
-          "/" +
-          projectName +
-          "/" +
-          encodeURIComponent(p.title),
+        url: p.pageUrl,
       };
     });
     const container = document.getElementById(this.ROOT_ELEM);
@@ -122,7 +120,7 @@ export abstract class BaseContentScript {
    * @private
    */
   protected async createPageBar(
-    result: SearchResult,
+    result: SearchResultDto,
     product: Product,
     projectName: string,
   ): Promise<void> {

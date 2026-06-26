@@ -1,9 +1,3 @@
-import SearchResult from "./scrapbox/SearchResult";
-import { UniCommand } from "./constant";
-import browser from "webextension-polyfill";
-
-type Port = browser.Runtime.Port;
-
 // Chromeのメッセージを送るときの型がここに集約されている
 // export interface SendProps {
 //   book: Book;
@@ -13,23 +7,6 @@ type Port = browser.Runtime.Port;
 //     request
 //   );
 // }
-
-/**
- * UniPortを利用するときのMessage
- */
-export type UniPostMessage = {
-  command: UniCommand;
-  query?: string;
-  searchResult?: SearchResult;
-  error?: {
-    message: string;
-    name?: string;
-  };
-};
-
-export function uniPostMessage(port: Port, message: UniPostMessage) {
-  port.postMessage(message);
-}
 
 export const StorageKeyProjectName = "projectName";
 export const StorageKeyScrapboxFormats = "scrapboxFormats";
