@@ -6,7 +6,7 @@ import { AcceptedService } from "../constant";
 import Product from "../Product"; // Needed for createScrapboxPageUrl type
 import { createScrapboxPageUrl } from "../organism/CreatePageBar"; // For the "create page" link
 import { StorageKeyProjectName } from "../chromeApi";
-import Page from "../scrapbox/Page"; // Pageクラスをインポート
+import { ScrapboxPageDto } from "../scrapbox/searchDtos";
 
 // Define the new component for displaying Scrapbox links
 type ScrapboxLinksDisplayProps = {
@@ -104,10 +104,7 @@ const DMMBasketChecker = () => {
             null, // eventName (from seriesName)
           );
 
-          const searchResult = await apiClient.search({
-            product,
-            projectName: currentProjectName,
-          });
+          const searchResult = await apiClient.search({ product });
           console.log(
             `[DMM Basket Checker] searchResult for "${title}":`,
             searchResult,
@@ -164,7 +161,7 @@ const DMMBasketChecker = () => {
             }
 
             const root = createRoot(linksContainer);
-            const existPages = searchResult.pages.map((p: Page) => ({
+            const existPages = searchResult.pages.map((p: ScrapboxPageDto) => ({
               name: p.title,
               url: p.pageUrl,
             }));

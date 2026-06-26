@@ -2,13 +2,14 @@
 
 > 更新: 2026-06-26 / 最新 `main` (`af3e6fb`, `[codex] Refactor Scrapbox search message boundary`) を基準に再定義。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
+> Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
 
 `uni` は Chrome / Firefox 向けのブラウザ拡張で、対応 EC / メディアサイトの商品ページから書誌情報を読み取り、Cosense(Scrapbox) に蔵書ページを作成・既存ページを検出する。
 
-Phase 1 の結果、最大の負債だった「`Product` インスタンスを background へ送って型を失い、`Book`/`Film`/`Asmr` へ復元する」経路は解消済み。現在、background に渡る検索入力は `query: string` だけになっている。
+Phase 1 の結果、最大の負債だった「`Product` インスタンスを background へ送って型を失い、`Book`/`Film`/`Asmr` へ復元する」経路は解消済み。Phase 1.5 の結果、検索経路は `browser.runtime.sendMessage` に統一され、background に渡る検索入力は `action` と `query` だけになっている。
 
 現在の主要構成:
 
@@ -17,8 +18,8 @@ Phase 1 の結果、最大の負債だった「`Product` インスタンスを b
 | Content Script | `src/contentScript/*.tsx`                                    | サイトごとの注入エントリ。`Product` は content script 側に留まる           |
 | Scraper        | `src/scraping/*.ts`                                          | `Document -> ScrapedData \| null` の入力アダプタ                           |
 | Product        | `Product` + `Book`/`Doujinshi`/`Film`/`Asmr`/`DLsiteProduct` | まだタイトル正規化・本文生成・storage 読込が同居                           |
-| Background     | `src/eventPage.ts`                                           | port 経路と `sendMessage` 経路がまだ並存                                   |
-| Scrapbox       | `src/scrapbox/*`                                             | API response 型、`SearchResult`/`Page`、content-side message client が混在 |
+| Background     | `src/eventPage.ts`                                           | `onMessage` で検索 request/response DTO を処理                             |
+| Scrapbox       | `src/scrapbox/*`                                             | API response 型、検索 DTO、content-side message client                     |
 | Popup/UI       | `src/popup/*`, `src/organism/*`                              | 設定 UI と content script のバー UI                                        |
 
 ## 1. 設計判断
@@ -43,25 +44,7 @@ Phase 1 の結果、最大の負債だった「`Product` インスタンスを b
 
 ## 2. 残っている主要問題
 
-### P1 残存 DTO smell: `SearchResult` / `Page` の private field 復元
-
-Phase 1 で `Product` 越境はなくなったが、返信側ではまだ `SearchResult.makeFromListenerRequest(req: any)` と `Page.makeFromListenerRequest(req: any)` が `_count`, `_pages`, `_title` など class private 風フィールドに依存して復元している。
-
-問題:
-
-- message boundary が class の内部表現に依存している。
-- `UniPostMessage.searchResult?: SearchResult` の型が、実際には plain object と class instance の混在を隠している。
-- port 経路と `sendMessage` 経路でレスポンス形状が揃っていない。
-
-### P2 Scrapbox 検索経路が二重
-
-詳細ページは `browser.runtime.connect` / `onConnect`、一覧ページは `runtime.sendMessage` / `onMessage("searchScrapbox")` を使っている。どちらも実質 request/response なので、port は不要。
-
-問題:
-
-- SearchResult 組み立てが `eventPage.ts` と `scrapboxApi.ts` に重複。
-- エラー DTO と成功 DTO の形が経路ごとに異なる。
-- `scrapboxApi.ts` だけ `chrome.runtime` callback API を直接使っており、他の `webextension-polyfill` と揃っていない。
+P1 / P2 は Phase 1.5 で解消済み。残課題は以下。
 
 ### P3 `Product` の責務過多
 
@@ -165,11 +148,20 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 着手順:
 
-**Phase 1.5 → Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
+**Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1は完了済みとして扱う。Phase 7a はPhase 5の作り込み方を左右するため早期に置く。ただし現在の最優先は、Phase 1から残った `SearchResult` DTO smell と検索経路二重化の解消。
+Phase 1 / Phase 1.5 は完了済みとして扱う。次は Phase 5 の作り込み方を左右する Phase 7a を優先する。
 
-### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化
+### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
+
+実施済み:
+
+- `SearchResultDto`, `ScrapboxPageDto`, `SearchBibliographyRequestDto`, `SearchBibliographyResponseDto` を追加。
+- 詳細ページ・一覧ページの検索経路を `browser.runtime.sendMessage` に統一。
+- background の検索 handler を `onMessage` に集約し、成功/失敗レスポンスを `{ status: "ok" | "error" }` に統一。
+- `runtime.connect` / `onConnect` / `makeFromListenerRequest` を production code から削除。
+- DTO 化により参照ゼロになった `SearchResult` / `Page` class（および `GetPagesSearchResponseInterface` alias）を削除。`SearchProps.projectName` の dead field も除去。
+- `scrapboxApi.ts` を `webextension-polyfill` Promise API に変更。
 
 目的:
 

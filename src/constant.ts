@@ -1,5 +1,3 @@
-import Port = chrome.runtime.Port;
-
 /**
  * 対応するサービス一覧
  * Unionで実装
@@ -21,18 +19,3 @@ export const AcceptedService = {
 } as const;
 export type AcceptedService =
   (typeof AcceptedService)[keyof typeof AcceptedService];
-
-export interface UniPort extends Port {
-  name: AcceptedService;
-}
-
-/**
- * background scriptsとcontent scriptsでやり取りするときのコマンド
- */
-export const UniCommand = {
-  existsPage: "existsPage",
-  createPage: "createPage",
-  sendBibliography: "sendBibliography",
-  searchError: "searchError",
-} as const;
-export type UniCommand = (typeof UniCommand)[keyof typeof UniCommand];
