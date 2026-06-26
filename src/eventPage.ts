@@ -3,6 +3,7 @@ import { StorageKeyProjectName } from "./chromeApi";
 import ky from "ky";
 import browser from "webextension-polyfill";
 import { SCRAPBOX_BASE_URL } from "./scrapbox/constants";
+import { scrapboxPageUrl } from "./scrapbox/scrapboxPageUrl";
 import {
   MessageErrorDto,
   ScrapboxSearchApiResponseDto,
@@ -148,9 +149,7 @@ function toSearchResultDto(
       title: pageData.title,
       imageUrl: pageData.image,
       description: pageData.lines.join("\n"),
-      pageUrl: `${SCRAPBOX_BASE_URL}/${projectName}/${encodeURIComponent(
-        pageData.title,
-      )}`,
+      pageUrl: scrapboxPageUrl(projectName, pageData.title),
     })),
   };
 }
