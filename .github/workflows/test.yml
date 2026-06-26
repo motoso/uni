@@ -1,5 +1,8 @@
 name: Fast Tests (CI)
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -10,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
       - uses: volta-cli/action@v4
-      - run: npm install
+      - run: npm ci
       - name: Prettier check (fail on diff)
         run: npx prettier --check **/*.{ts,tsx,scss}
+      - name: Architecture dependency check
+        run: npm run dep:check
       - name: Run Small Tests (Fast Unit Tests)
         run: npm run test:small

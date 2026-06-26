@@ -1,7 +1,7 @@
 /**
  * Scrapboxのページ
  */
-import ScrapboxApiClient from "./scrapboxApi"; // BASE_URL を使うためにインポート
+import { SCRAPBOX_BASE_URL } from "./constants";
 
 class Page {
   // ページタイトル（URLのパス）
@@ -13,18 +13,23 @@ class Page {
   // Scrapboxページへの完全なURL
   private readonly _pageUrl: string;
 
-  constructor(title: string, imageUrl: string, description: string, projectName: string) {
+  constructor(
+    title: string,
+    imageUrl: string,
+    description: string,
+    projectName: string,
+  ) {
     this._title = title;
     this._imageUrl = imageUrl;
     this._description = description;
-    this._pageUrl = `${ScrapboxApiClient.BASE_URL}/${projectName}/${encodeURIComponent(title)}`;
+    this._pageUrl = `${SCRAPBOX_BASE_URL}/${projectName}/${encodeURIComponent(title)}`;
   }
 
   public static make(
     title: string,
     imageUrl: string,
     description: string,
-    projectName: string
+    projectName: string,
   ): Page {
     return new Page(title, imageUrl, description, projectName);
   }

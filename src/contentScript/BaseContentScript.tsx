@@ -8,10 +8,10 @@ import SearchResult from "../scrapbox/SearchResult";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { CreatePageBar } from "../organism/CreatePageBar";
-import ScrapboxApiClient from "../scrapbox/scrapboxApi";
 import { AlertBar } from "../organism/AlertBar";
 import Product from "../Product";
 import browser from "webextension-polyfill";
+import { SCRAPBOX_BASE_URL } from "../scrapbox/constants";
 
 /**
  * Content Scriptに必要な処理を集約したクラス
@@ -96,7 +96,7 @@ export abstract class BaseContentScript {
       return {
         name: "/" + projectName + "/" + p.title,
         url:
-          ScrapboxApiClient.BASE_URL +
+          SCRAPBOX_BASE_URL +
           "/" +
           projectName +
           "/" +

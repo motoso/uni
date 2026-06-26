@@ -1,217 +1,350 @@
-# uni リファクタリング計画（設計レベル）
+# uni リファクタリング計画（Phase 1 完了後）
 
-> 作成: 2026-06-26 / Claude Code による設計レビュー + Codex(gpt-5.5) セカンドオピニオンを反映した確定版。
-> 各フェーズは独立してマージ可能。master 直 push 禁止のため必ずフェーズ単位の PR とする。
+> 更新: 2026-06-26 / 最新 `main` (`af3e6fb`, `[codex] Refactor Scrapbox search message boundary`) を基準に再定義。
+> Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
+> 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
-## 確定した設計判断（オーナー決定済み）
+## 0. 現在地
 
-1. **トランスポート: sendMessage 一本化**。port を全廃し、詳細ページ・一覧ページとも `browser.runtime.sendMessage` に統一する。uni には port（永続接続）が必須なケース（ストリーミング・長寿命双方向・onDisconnect 検知・連続イベント）が現在も近い将来も無く、現状は両経路とも実質リクエスト/レスポンスのため。push 系の将来要件は `storage.onChanged` 購読 / `tabs.sendMessage` で対応する。
-2. **「もう買ってるかも」の false positive 厳密化は別 Issue**。今回のリファクタは挙動を変えず現状の `count >= 1` を維持。`existsExactTitleMatch` の実装・4語丸めの見直しは仕様検討を要するため切り出す。
-3. **Amazon は「確認済み DOM バリアントごとに1セレクタ」**。投機的な7連鎖は全廃。原則1セレクタとし、実在が確認できる複数レイアウト（箇条書き `#detailBullets_feature_div` / テーブル `#productDetails...`）のみそれぞれ1セレクタを許容（CLAUDE.md の "必須の場合" に該当）。Phase6 のフィクスチャ後に実施。
-4. **Phase0 のデバッグ資産は monitoring 配下に集約**。`*-specific-debug.test.ts` は残すが debug 用ディレクトリへ整理。PNG/curl/失敗 txt は除去・gitignore。
-5. **エントリポイント／ビルド基盤は「判断（Phase 7a）」と「本移行（Phase 7b）」を分離**。判断（1サイト PoC＋ADR で webpack 維持＋レジストリ生成 / Vite+crxjs / WXT を比較）は **Phase 1 直後の早期**に置き、Phase 5 のスコープを左右させる。本移行は **Phase 6 のテスト網の後**に挙動凍結で実施（webpack 以外を選んだ場合のみ）。WXT が本命候補だが採否は計測後。
-6. **バー UI のランタイム軽量化も評価フェーズとして計画化（Phase 8）**。react-dom×15 重複を Preact 代替 or vanilla 化で削減。Phase 7 とは独立に進められる。content script 側のみ対象（popup は React 維持）。
+`uni` は Chrome / Firefox 向けのブラウザ拡張で、対応 EC / メディアサイトの商品ページから書誌情報を読み取り、Cosense(Scrapbox) に蔵書ページを作成・既存ページを検出する。
 
-## 0. 背景とアーキテクチャ概観
+Phase 1 の結果、最大の負債だった「`Product` インスタンスを background へ送って型を失い、`Book`/`Film`/`Asmr` へ復元する」経路は解消済み。現在、background に渡る検索入力は `query: string` だけになっている。
 
-`uni` は MV3 拡張（Chrome / Firefox）。対応 EC サイトの商品ページから書誌情報をスクレイピングし、Cosense(Scrapbox) に蔵書ページを作成・既存ページを検出する。
+現在の主要構成:
 
-| 層 | ファイル | 役割 |
-|---|---|---|
-| Content Script | `src/contentScript/*.tsx`（15本） | サイトごとの注入エントリ。`BaseContentScript` を継承し `scrape()`/`createElementForBar()` を実装 |
-| Scraper | `src/scraping/*.ts`（13本） | `(document) => ScrapedData \| null` の純関数 |
-| Domain | `Product` + `Book`/`Doujinshi`/`Film`/`Asmr`/`DLsiteProduct` | データ保持＋Scrapbox 本文生成＋タイトル正規化 |
-| Background | `eventPage.ts` | port/message 受信→Scrapbox 検索→存在可否を返す |
-| Scrapbox | `src/scrapbox/*` | API クライアント・SearchResult・Page |
-| Popup | `src/popup/*` | プロジェクト名・フォーマットテンプレート設定 |
+| 領域           | ファイル                                                     | 現状                                                                       |
+| -------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Content Script | `src/contentScript/*.tsx`                                    | サイトごとの注入エントリ。`Product` は content script 側に留まる           |
+| Scraper        | `src/scraping/*.ts`                                          | `Document -> ScrapedData \| null` の入力アダプタ                           |
+| Product        | `Product` + `Book`/`Doujinshi`/`Film`/`Asmr`/`DLsiteProduct` | まだタイトル正規化・本文生成・storage 読込が同居                           |
+| Background     | `src/eventPage.ts`                                           | port 経路と `sendMessage` 経路がまだ並存                                   |
+| Scrapbox       | `src/scrapbox/*`                                             | API response 型、`SearchResult`/`Page`、content-side message client が混在 |
+| Popup/UI       | `src/popup/*`, `src/organism/*`                              | 設定 UI と content script のバー UI                                        |
 
-良い点: スクレイパーが純関数に分離されている／フォーマットをユーザーがカスタムできる。
+## 1. 設計判断
 
----
+1. **フル Clean Architecture は採用しない。**
+    - uni の現時点の usecase はほぼ「Scrapbox検索」と「Scrapbox本文生成」に限られる。
+    - `presentation/usecase/ports/infrastructure` の全面フォルダ移動は、WXT/Vite などのビルド基盤移行と衝突しやすい。
+    - CircleCart / hampu の ADR-011 からは「依存方向をCIで守る」思想だけを取り込む。
+2. **DDD-lite + 最小 port 境界を採用する。**
+    - 純粋ロジックは browser / React / network / storage 非依存にする。
+    - 外部I/Oは薄い port 名を付ける。ただし過剰な Repository 層は作らない。
+3. **Scraper は domain ではなく入力アダプタとして扱う。**
+    - 各サイト固有の DOM 知識は `src/scraping` / 将来の `src/sites` に閉じ込める。
+    - `Product` 生成とは契約を分ける。
+4. **Scrapbox `SearchResult` / `Page` は core domain ではなく Scrapbox context として扱う。**
+    - 検索レスポンスは plain DTO で越境する。
+    - class instance を message boundary に流さない。
+5. **方向性はCIで守る。**
+    - `dependency-cruiser` を `npm run dep:check` として導入。
+    - 現在は background / scraper / 将来の domain-usecase-ports 境界を error でチェックする。
+    - 本格的な層フォルダができたらルールを段階的に強化する。
 
-## 1. 設計上の主要問題（優先度順・file:line 裏取り済み）
+## 2. 残っている主要問題
 
-### P1（最重要）メッセージ境界で Product 丸ごと送信→型を失い再構築
-- `BaseContentScript.execute()`（[BaseContentScript.tsx:38](../src/contentScript/BaseContentScript.tsx)）が `Product` インスタンスを `port.postMessage` で background に送信。
-- クラス情報が消えるため `eventPage.ts:44-50` が `isBook`/`isVideo` で分岐し `makeFromListenerRequest(req: any)` で private フィールドを文字列名参照して復元。
-- **だが background が復元後に使うのは `product.titleForSearch`（string）一つだけ**（[eventPage.ts:58](../src/eventPage.ts)）。返信は `searchResult` のみで product は返らず、content script は元の product を保持し続ける。
-- 別経路 `scrapboxApi.ts:17` は既に `query: titleForSearch` だけ送っている → **port でも文字列だけ送れば型復元機構一式が不要**。
-- この機構の中に **死蔵バグ2件**:
-  - **Asmr 誤復元**: `DLsiteManiax.tsx:45` が service=`dlsiteManiax` の Asmr を返すが、`eventPage.ts:44` の else で `Doujinshi` として復元される。
-  - **Film 復元バグ**: `Film.makeFromListenerRequest`（[Film.ts:70](../src/Film.ts)）が存在しない `request._actors` を読む。実体は親 `_authors`（`Film.make` → `super(... actors ...)`、[Film.ts:23](../src/Film.ts)）なので undefined になる。
-  - 両者とも「background は title しか使わない」ため現状は表面化していない。
-- `Book.ts:62` の Dayjs 越境「未検証」TODO も同根。
+### P1 残存 DTO smell: `SearchResult` / `Page` の private field 復元
+
+Phase 1 で `Product` 越境はなくなったが、返信側ではまだ `SearchResult.makeFromListenerRequest(req: any)` と `Page.makeFromListenerRequest(req: any)` が `_count`, `_pages`, `_title` など class private 風フィールドに依存して復元している。
+
+問題:
+
+- message boundary が class の内部表現に依存している。
+- `UniPostMessage.searchResult?: SearchResult` の型が、実際には plain object と class instance の混在を隠している。
+- port 経路と `sendMessage` 経路でレスポンス形状が揃っていない。
 
 ### P2 Scrapbox 検索経路が二重
-- `eventPage.ts` の `onConnect`（port, 詳細ページ用）と `onMessage`（`searchScrapbox`, 一覧ページ用）が並存。SearchResult 組み立てが両方に重複（[eventPage.ts:61](../src/eventPage.ts), [scrapboxApi.ts:31](../src/scrapbox/scrapboxApi.ts)）。
-- port 経路は Scrapbox API エラー時にログのみで content へ返さない（[eventPage.ts:91](../src/eventPage.ts)）。onMessage 経路はエラーを返す。挙動が非対称。
 
-### P3 `Product` の God-object 化
-- データ保持＋50行の `titleForSearch` 正規表現＋Scrapbox フォーマット整形＋`browser.storage.sync` 直接アクセス（[Product.ts:45](../src/Product.ts)）＋DTO 復元が同居。
-- プレースホルダ置換が base と各サブクラスの `replacePlaceholders` に分散。Asmr は `defaultScrapboxFormat` 内テンプレートリテラル直挿しと placeholder 方式が混在。
-- title 半角化が constructor と `titleForSearch` で二重。
+詳細ページは `browser.runtime.connect` / `onConnect`、一覧ページは `runtime.sendMessage` / `onMessage("searchScrapbox")` を使っている。どちらも実質 request/response なので、port は不要。
 
-### P4 「fallback 禁止」方針にスクレイパーが違反
-- CLAUDE.md は「セレクターは想像で書かず fallback 禁止（なくなったらテストが落ちるのが理想）」と明記。
-- `amazon-scraper.ts` はタイトル7・詳細7・著者7の投機的セレクタ連鎖（[amazon-scraper.ts:26](../src/scraping/amazon-scraper.ts)）。特に `h1` / `.a-color-secondary a` は誤取得しやすい。
-- 戻り値契約が不揃い: `publishedAt` が `Date` / `Date|null` / `string|null`(Amazon)。Amazon は string を content script 側で ad-hoc に dayjs 化。CI 判定 `log()` も各スクレイパーに重複。
+問題:
 
-### P5 新サイト追加が散弾編集（7箇所）
-- `constant.ts`（service + isBook/isVideo 配列）/ `manifest.json` / `webpack.common.js` / `eventPage.ts` の declarativeContent / content script / scraper / types。
-- declarativeContent ルール（7サイト）と manifest content_scripts（13サイト）がドリフトして二重管理。
+- SearchResult 組み立てが `eventPage.ts` と `scrapboxApi.ts` に重複。
+- エラー DTO と成功 DTO の形が経路ごとに異なる。
+- `scrapboxApi.ts` だけ `chrome.runtime` callback API を直接使っており、他の `webextension-polyfill` と揃っていない。
 
-### P6 Content Script のボイラープレートと例外処理欠落
-- 詳細ページ系13本がほぼ同形のグルー。`scrape()` が `null` を返しても `execute()` が未ガードで送信（[BaseContentScript.tsx:38](../src/contentScript/BaseContentScript.tsx)）→ background は `msg.product` が falsy なら無返信 → **port が無応答で hang**。
-- DOM 待ちが各自バラバラ（FanzaBooks `setTimeout(3000)`、FanzaAnime 独自 MutationObserver、DMMBasket/DLsiteCart ポーリング）。
-- 一覧ページ系（DMMBasket/DLsiteCart）は `BaseContentScript` を完全バイパスし独自実装。
+### P3 `Product` の責務過多
 
-### P7 リポジトリ衛生・テスト戦略
-- **tracked**: `ci-failed-tests.txt`, `failed-tests-patterns.txt` → `git rm --cached` 必要。
-- **untracked**: `*-debug-screenshot.png`, `curl`, zip → `.gitignore` 追加で十分（zip は既に未追跡）。
-- 純関数スクレイパーなのに HTML フィクスチャのユニットテストが無く、live monitoring 依存で flaky。
+`Product` は以下を同時に持っている。
 
-### P8 エントリポイント／ビルド基盤が「webpack 時代の取ってつけ」
-- **三重の手書き管理＋ドリフト**: webpack entry（15列挙）／manifest content_scripts（13）／eventPage の declarativeContent（7）が別々に手書きで、互いにズレている。
-- **副作用モジュール縛り**: 各 content script は末尾 `new X().execute()` の副作用で動き、「1ファイル＝1 webpack エントリ」に固定されている。
-- **React がバンドルごとに重複**: ビルド出力で各 content script が約220KB（`react-dom` 533KB がほぼ各バンドルにインライン）。content script は独立注入で実行時にモジュール共有できず、splitChunks では消せない構造的重複。合計 js 約3.3MB。一行バー UI に react-dom は重い。
-- **Chrome/Firefox 切替が旧式**: `wext-manifest` の `__chrome__`/`__firefox__` プレフィックス＋`TARGET_BROWSER` 環境変数。
-- 2つの直交軸に分解できる: **軸A=ビルド/エントリ基盤**（手書き列挙・manifest 生成・クロスブラウザ）、**軸B=ランタイム重量**（React×15 重複、バー UI に react-dom が要るか）。
+- データ保持
+- `titleForSearch` の正規化
+- Scrapbox本文テンプレート展開
+- `browser.storage.sync` からフォーマットを読む副作用
 
-### その他の設計リスク（Codex 指摘・要対応）
-- **storage cache stale**: `eventPage.ts:21` は起動時に一度だけ `storage.sync.get(null)`。popup で projectName を変えても service worker 生存中は古い値を使う。
-- **`scrapboxApi.ts` だけ `chrome.runtime` 直叩き**（callback 式、[scrapboxApi.ts:17](../src/scrapbox/scrapboxApi.ts)）。他は `webextension-polyfill`。Promise 化・エラー処理・テスト容易性・Firefox 互換のため寄せる価値あり。
-- **`SearchResult.existsExactTitleMatch`**（[SearchResult.ts:5](../src/scrapbox/SearchResult.ts)）は型にあるが domain object に保持されず未使用。判定は `count >= 1` のみ（[eventPage.ts:80](../src/eventPage.ts)）。`titleForSearch` は最大4語に丸めるため false positive の余地 → **これはリファクタでなくプロダクト仕様。別 Issue で扱う**。
+domainに近い純粋ロジックと extension infrastructure が混ざっているため、テストしづらく、将来の本文生成 usecase も見えにくい。
 
----
+### P4 スクレイパー契約が不揃い
 
-## 2. 目標アーキテクチャ
+- `publishedAt` の型が scraper ごとに `Date`, `Date | null`, `string | null` で揺れている。
+- Amazon scraper に投機的 fallback selector が多い。
+- logging / CI 判定用の出力が scraper ごとに散っている。
+- フィクスチャ unit test が少なく、live monitoring への依存が高い。
+
+### P5 新サイト追加が散弾編集
+
+site の定義が `constant.ts`, `manifest.json`, `webpack.common.js`, `eventPage.ts`, content script, scraper, tests に分散している。ビルド基盤判断前に自前 generator を作り込むと捨て作業になりうるため、Phase 7a の判断に従属させる。
+
+### P6 Content Script のボイラープレート
+
+詳細ページ系は同形の `scrape()` / `createElementForBar()` / `execute()` が並ぶ。一覧ページ系は `BaseContentScript` と別実装。DOM待ちも `setTimeout`, MutationObserver, polling が散在している。
+
+### P7 ビルド基盤と content script ランタイム重量
+
+webpack entry / manifest content_scripts / declarativeContent が手書きでドリフトしやすい。さらに content script ごとに `react-dom` が重複し、一行バー UI に対してランタイムが重い。
+
+## 3. 目標アーキテクチャ
+
+大きな層フォルダへ即移動するのではなく、まず依存方向を明確にする。
 
 ```
-[site registry]  ← 単一の真実: host → { matches, contentScript, scraper, productFactory }
-       │
-content script (薄いエントリ) ──scrape()──▶ scraper (純関数: Document→ScrapedData)
-       │                                          │
-       │                               productFactory(ScrapedData)→Product
-       │
-       ├─ titleForSearch(product.title) を計算（純モジュール）
-       ▼
-   検索リクエスト: { query: titleForSearch }   ← Product は送らない（plain DTO のみ）
-       │
-   background: 単一の ScrapboxSearchService（経路1本・エラーも DTO 化）
-       ▼
-   レスポンス: { status, projectName, searchResultDto }
-       │
-   content script が保持済み Product でバー描画 / 本文生成（ScrapboxFormatter）
+site content script
+  -> scraper(Document -> ScrapedData)
+  -> productFactory(ScrapedData -> Product)
+  -> titleForSearch(product.title)
+  -> SearchBibliographyMessageClient(sendMessage DTO)
+
+background message handler
+  -> SearchBibliography usecase-ish function
+       -> SettingsReader(projectName)
+       -> ScrapboxSearchGateway(query)
+       -> SearchResultDto
+
+content script UI
+  -> SearchResultDto
+  -> AlertBar / CreatePageBar
+  -> Product kept locally for page body generation
 ```
 
-設計原則:
-1. プロセス境界を流れるのは plain DTO（string / 最小 JSON）だけ。リッチな Product は越境させない。
-2. Product はデータ＋整形のみ。タイトル正規化・フォーマット整形・ストレージ読込を独立モジュールへ。
-3. 検索経路は1本。失敗状態も DTO で返す。
-4. サイトレジストリで追加箇所を集約。
+依存方向:
 
----
+```
+contentScript / popup / organism  -> usecase-ish functions -> pure modules
+background handler                -> gateway/settings abstractions -> concrete browser/ky I/O
+scraping                          -> ScrapedData only
+```
 
-## 3. フェーズ計画（Codex レビュー反映・確定）
+将来 `src/domain`, `src/usecase`, `src/ports`, `src/infrastructure` を作る場合の原則:
 
-> 着手順: **Phase0 → Phase1 → Phase7a(基盤判断 PoC/ADR) → Phase1.5 → Phase6(前倒し) → Phase3 → Phase2 → Phase4 → Phase5(判断に従属) → Phase7b(本移行) → Phase8**
-> ポイント1: 挙動が変わりうる改修（Amazon fallback 削減・Product 分解）の**前に**フィクスチャテストで現状を固定する。
-> ポイント2: ビルド基盤の**判断（7a）は早期**に（Phase5 の作り込みを左右するため）、**本移行（7b）はテスト網の後**に。判断と本移行を分離する。詳細は下記「フェーズ順序の根拠」を参照。
+- `src/domain`: browser, chrome, React, ky, storage, message DTO を import しない。
+- `src/usecase`: domain と ports だけに依存し、UI / concrete infrastructure へ依存しない。
+- `src/ports`: interface / type のみ。browser, ky, React に依存しない。
+- `src/infrastructure`: browser storage, runtime messaging, Scrapbox HTTP, mappers を持つ。
 
-### Phase 0 — リポジトリ衛生（低リスク・即効）
-- tracked な生成物を除去: `git rm --cached ci-failed-tests.txt failed-tests-patterns.txt`。
-- `.gitignore` に追加: `*.zip`, `*-debug-screenshot.png`, `playwright-report/`, `test-results/`, `/curl`, `*-failed*.txt`。
-- `*-specific-debug.test.ts` は**残すが monitoring 配下の debug 用ディレクトリへ集約**（決定済み）。
-- **効果**: 以降の diff が読みやすくなり、リファクタの安全性が上がる。
+## 4. CIガードレール
 
-### Phase 1 — メッセージング境界の DTO 化（P1 / 最重要・最初の本丸）
-1. 送るペイロードを `{ query: titleForSearch }`（string）に変更し、`UniPostMessage.product`（Product 丸ごと送信）を廃止。トランスポートも `sendMessage` へ寄せる前提で配線（Phase1.5 で経路統合・port 全廃と接続）。
-2. `eventPage.ts` から `makeFromListenerRequest` 呼び出し・`isBook/isVideo` 分岐を削除。各ドメインの `makeFromListenerRequest`（4箇所）も削除 → **Asmr/Film 死蔵バグ・Dayjs 越境 TODO が同時消滅**。
-3. **storage cache 廃止**: background はリクエストごとに `projectName` を読む、または `storage.onChanged` で更新（stale 解消）。
-4. `execute()` に null ガード: `scrape()` が null なら描画・送信せず終了（port hang 解消）。
-5. port 経路のエラーを失敗 DTO で content へ返す（onMessage 経路と非対称を解消）。
-- **テスト**: `titleForSearch → 検索クエリ` の small 単体、`access-check` large は維持。
-- **効果**: 最大の負債が消えコード量が大幅減。後続の土台。
+hampu と同じ考え方で、方向性チェックをCIに入れる。
 
-### Phase 1.5 — Scrapbox 検索経路の統合（P2）
-- `onConnect` と `onMessage` を単一の `ScrapboxSearchService` に統合し、SearchResult 組み立ての重複を解消。`scrapboxApi.ts` もこのサービスを使う。
-- **トランスポートは sendMessage 一本化（決定済み）**。詳細ページの port（`runtime.connect`）を廃止し、`browser.runtime.sendMessage({ action, query })` に統一。`onConnect` リスナと各 content script の `connect()`/`disconnect()` 配線を削除。
-- リクエスト/レスポンスを DTO で型付け: req `{ action: "searchScrapbox", query }`、res `{ status: "ok" | "error", projectName, searchResult? , error? }`。エラー時も必ず返す（現状 port 経路の無返信を解消）。
+追加済み:
 
-### Phase 6（前倒し）— フィクスチャテストの導入（安全網）
-- message contract（Phase1 の DTO）に対するテスト。
-- 主要スクレイパーに、実 HTML を1度だけ記録した**フィクスチャ + jsdom のユニットテスト**を `small` に追加。純関数なので相性が良い。
-- live large テストは「アクセス可否 / セレクタ生存確認」に役割を絞る（IP 制限 `allowIpBlock` 方針は維持）。
-- **効果**: Phase3/Phase2 の挙動変化を検知できる安全網を先に張る。
+- `.dependency-cruiser.cjs`
+- `npm run dep:check`
+- `.github/workflows/test.yml` の `Architecture dependency check`
 
-### Phase 3 — スクレイパー契約の統一（P4）
-1. `ScrapedData.publishedAt` を統一型に（推奨: パース済み `Date | null` + 共通 `parsePublishedAt`）。Amazon content script 側の ad-hoc パースを撤去。
-2. CI 判定 `log()` を `src/scraping/utils/logger.ts` に共通化。
-3. 散在する型を `src/scraping/types.ts` に集約。
-4. **Amazon の投機的 fallback セレクタを削減（確認済み DOM バリアントごとに1セレクタ）**。Playwright で実 DOM を確認し、原則1セレクタ。実在が確認できる複数レイアウト（箇条書き `#detailBullets_feature_div` / テーブル `#productDetails...`）のみそれぞれ1セレクタを許容。`h1` や `.a-color-secondary a` のような投機的セレクタは全廃し、落ちたら気づける状態にする。
+現時点の error ルール:
 
-### Phase 2 — Product の責務分離（P3）
-1. `titleForSearch` の正規表現を `src/domain/titleForSearch.ts` の純関数に抽出（`title-normalization.test.ts` をこちらへ）。
-2. プレースホルダ置換を `src/domain/ScrapboxFormatter.ts` に集約。各サブクラスの override を `toTemplateVars(): Record<string,string>` ベースの一元置換に置換。Asmr のテンプレートリテラル直挿しも統一。
-3. `createScrapboxBodyString` 内の `browser.storage.sync` 読込を呼び出し側（popup/organism）へ追い出す（DI）。
-- **効果**: ドメインが拡張 API 非依存になりユニットテスト容易化。
+- circular dependency 禁止。
+- unresolved dependency 禁止。
+- `eventPage.ts` は `Product`/UI/contentScript/scraper を import しない。
+- `src/scraping` は `Product`/UI/extension API/Scrapbox を import しない。
+- 将来の `src/domain` は browser/UI/network/storage/transport に依存しない。`react`, `react-dom`, `ky`, `webextension-polyfill`, `dayjs` などの runtime npm package も直接 import しない。
+- 将来の `src/usecase` は presentation / concrete infrastructure に依存しない。UI / extension runtime / HTTP client の npm package も直接 import しない。
+- 将来の `src/ports` は concrete implementation に依存しない。UI / extension runtime / HTTP client の npm package も直接 import しない。
 
-### Phase 4 — Content Script の共通化（P6 残り）
-- DOM 待ちの共通化（`waitForElement`/`waitForSelector`）で `setTimeout(3000)` 等を置換。
-- 詳細ページ系を `createProduct: (ScrapedData)=>Product` を渡すだけの宣言的エントリへ（テンプレートメソッド→構成）。
-- 一覧ページ系（DMMBasket/DLsiteCart）の共通パターン（observer + per-item 検索 + リンク注入）を `ListPageContentScript` 基底に抽出。
+注意:
 
-### Phase 7a（評価・判断フェーズ）— ビルド/エントリ基盤の方針決定（P8・軸A / Phase1 直後・早期）
-> **本移行ではなく「どの基盤に行くか」を1サイト PoC で決めて ADR に落とすだけ**。安価で、Phase 5 の作り込み方を左右するため早期に置く。
-- 3案を1サイトだけ移植して計測・比較:
-  1. **webpack 維持 ＋ レジストリ駆動生成**（移行リスク最小）
-  2. **Vite + @crxjs/vite-plugin**（HMR・高速ビルド・entry 半自動）
-  3. **WXT（wxt.dev）**: `entrypoints/` 規約で content script を自動 discovery、manifest 自動生成、Chrome/Firefox クロスブラウザ、Vite 基盤。本プロジェクトの構造（多サイト content script ＋ 両ブラウザ）に最も合うが移行コスト最大。
-- 評価軸: 手書き管理の削減度／クロスブラウザ生成（現 `__chrome__`/`__firefox__` 置換）／HMR・DX／バンドルサイズ／移行コスト・後戻り可能性。
-- **アウトプット**: ADR（採用案＋根拠）。これにより Phase 5 と Phase 7b のスコープが確定する。
-- 推奨スタンス: WXT を本命候補として PoC、ただし採否は計測後。
+- `dependency-cruiser` は import graph を見るため、`chrome` / `browser` の global 直接参照は検出できない。domain / usecase の純粋性をより強く守る段階では、ESLint の `no-restricted-globals` / `no-restricted-imports` 相当を追加する。
 
-### Phase 5 — サイトレジストリ化（P5・軸A / **Phase 7a の判断に従属**）
-- `src/sites/registry.ts` に `{ service, hostPatterns, productType, entry }` を集約（どの基盤でも資産として生きる）。
-- declarativeContent と manifest content_scripts の二重管理を解消。
-- **スコープは 7a の決定次第**:
-  - 7a=「webpack 維持」なら **entry/manifest をレジストリから生成する自前ジェネレータを実装**（軸A の本命対応）。
-  - 7a=「WXT/Vite 採用」なら **自前ジェネレータは作らない**（フレームワークが entry/manifest を担うため）。レジストリは productFactory 等のドメイン用途に縮小し、Phase 7b で WXT の `entrypoints/` 規約へ寄せる。
+運用方針:
 
-### Phase 7b（本移行フェーズ）— ビルド基盤の移行実施（軸A / **テスト網の後**・任意）
-> 7a で webpack 以外を選んだ場合のみ。Phase 6 のフィクスチャ網が揃ってから着手し、**挙動を凍結したまま（ファイル移動とビルド差し替えのみ・ロジック変更なし）**移行。Chrome/Firefox 両方で読み込み確認してから完了とする。
-- `new X().execute()` の副作用エントリを採用基盤の規約（例: WXT の `defineContentScript`）へ移す。`BaseContentScript` クラスや scraper はそのまま再利用。
-- 2つの大きな変数を同時に動かさない（ランタイムは Phase1〜5 で安定済み・テスト済みであること）。
+- 新しい境界を作るPRでは、同じPRで dependency-cruiser ルールも追加・強化する。
+- 最初から全ルールを強すぎる error にしない。既存構造で守れる方向だけ error にする。
+- Warning で放置するより、狭い error ルールを少しずつ増やす。
 
-### Phase 8（評価フェーズ）— バー UI のランタイム軽量化（P8・軸B / Phase 7 と独立）
-- react-dom（533KB）が15 content script に重複インラインしている問題。バー（AlertBar / CreatePageBar）は一行 UI で react-dom はオーバースペック。
-- 選択肢: **Preact 代替**（`preact/compat` で React API ほぼ維持、数KB級）／**vanilla DOM 化**（最軽量だが書換量大）。
-- まず1サイトで PoC してバンドル削減量と保守性を計測。Phase 7（ビルド基盤）とは独立に差し込み可能。
-- 注意: popup は React のままでよい（重複問題は content script 側のみ）。
+## 5. フェーズ計画（Phase 1以後）
 
----
+着手順:
 
-## 4. 着手順とリスク
+**Phase 1.5 → Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-| 順 | フェーズ | リスク | 効果 |
-|---|---|---|---|
-| 1 | Phase 0 衛生 | 極低 | diff 可読性↑ |
-| 2 | **Phase 1 DTO化** | 中（境界変更） | **最大の負債解消＋死蔵バグ除去** |
-| 3 | **Phase 7a 基盤判断（PoC/ADR）** | 低（評価のみ） | Phase5/7b のスコープ確定・DX 方針決定 |
-| 4 | Phase 1.5 経路統合 | 中 | 重複・エラー非対称解消 |
-| 5 | Phase 6 フィクスチャ | 低 | 以降の安全網 |
-| 6 | Phase 3 scraper契約 | 中（Amazon 挙動変化注意） | 保守性↑ |
-| 7 | Phase 2 Product分離 | 中 | テスト容易化 |
-| 8 | Phase 4 content script 共通化 | 中 | 拡張容易化 |
-| 9 | Phase 5 registry（7a に従属） | 中 | ドリフト解消・追加箇所集約 |
-| 10 | Phase 7b 本移行（7a で非 webpack 選択時のみ） | 大 | 手書き管理撤廃・HMR/DX↑ |
-| 11 | Phase 8 バー UI 軽量化（Preact/vanilla） | 評価→中 | バンドル激減（軸B・Phase7 と独立） |
+Phase 1は完了済みとして扱う。Phase 7a はPhase 5の作り込み方を左右するため早期に置く。ただし現在の最優先は、Phase 1から残った `SearchResult` DTO smell と検索経路二重化の解消。
 
-### フェーズ順序の根拠（判断と本移行の分離）
-- **判断（7a）を早期に置く理由**: WXT/Vite を採ると entry/manifest 生成はフレームワークが担うため、Phase 5 で自前ジェネレータを作り込むと**後で丸ごと捨てる**ことになる。7a と最も強く結合するのは Phase 5。よって 7a を Phase 5 の前に置き、Phase 5 のスコープを判断に従属させる。
-- **本移行（7b）を後に置く理由**: ランタイムがまだ不安定／無テストの段階で基盤移行も重ねると「移行のせい？リファクタのせい？」が切り分け不能。Phase 6 のテスト網を張り、ランタイムを Phase1〜5 で安定させてから、挙動凍結で移行する。
-- **Phase 1 を判断より前に置く理由**: P1 の死蔵バグ一掃は高価値かつ基盤非依存。早期に出す。
-- **再利用される資産**: `BaseContentScript`・scraper 純関数・`src/sites/registry.ts` のドメイン部分はどの基盤でも生き残るため、7b 採否に関わらず先行して整備してよい。捨てになりうるのは「自前 manifest/entry ジェネレータ」だけ。
+### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化
 
-## 5. リファクタとは別に切り出す Issue
-- `titleForSearch` の4語丸めによる「もう買ってるかも」false positive の仕様（`existsExactTitleMatch` を実際に使うか含め検討）。※トランスポート一本化（sendMessage）は本計画 Phase1.5 に確定済みのため Issue から除外。
+目的:
+
+- `SearchResult` / `Page` class instance を message boundary から消す。
+- port を廃止し、詳細ページ・一覧ページを `browser.runtime.sendMessage` に統一する。
+- 一覧ページ側で既に使っている `sendMessage + raw Scrapbox API DTO` の方向に寄せ、二重経路を同じレスポンス DTO に統一する。
+- background 側の検索処理を1つの handler / usecase-ish function に集約する。
+
+作業:
+
+0. 既存 detail page port flow の `existPages` mapping（`/{projectName}/{title}` と Scrapbox URL）を small characterization test で固定する。
+1. `SearchResultDto`, `ScrapboxPageDto`, `SearchBibliographyRequestDto`, `SearchBibliographyResponseDto` を定義。
+2. `UniPostMessage.searchResult?: SearchResult` を廃止し、plain DTO だけを返す。
+3. `SearchResult.makeFromListenerRequest` / `Page.makeFromListenerRequest` を削除。
+4. `BaseContentScript` の `runtime.connect` / `port.disconnect` を `browser.runtime.sendMessage` に置換。
+5. `eventPage.ts` の `onConnect` を削除し、`onMessage` に一本化。
+6. `scrapboxApi.ts` を `webextension-polyfill` Promise API に寄せ、content-side message client として整理。
+7. 成功レスポンスは `{ status: "ok", projectName, searchResult }`、失敗レスポンスは `{ status: "error", error }` に統一。
+
+テスト:
+
+- small: detail page content script が `sendMessage({ action, query })` だけ送る。
+- small: background handler が count に応じて同じ DTO shape を返す。
+- small: Scrapbox API エラー時も必ず error DTO を返す。
+- dep:check: background が Product/UI に依存しないことを維持。
+
+完了条件:
+
+- `runtime.connect` / `onConnect` が production code から消える。
+- `makeFromListenerRequest` が production code から消える。
+- `SearchResult` class が message DTO として使われない。
+
+### Phase 7a — ビルド/エントリ基盤の方針決定 ADR
+
+目的:
+
+- Phase 5 の registry / manifest 生成を自前で作るべきか、WXT/Vite の規約に任せるべきかを先に決める。
+
+比較対象:
+
+1. webpack 維持 + registry-driven generation
+2. Vite + `@crxjs/vite-plugin`
+3. WXT
+
+評価軸:
+
+- content script entry の手書き削減度
+- Chrome/Firefox manifest 生成
+- HMR / dev server / build time
+- bundle size
+- 既存 `BaseContentScript` / scraper の再利用度
+- 後戻り可能性
+
+アウトプット:
+
+- `docs/adr/002-...md` として採用案・不採用案・Phase 5/7b への影響を書く。
+
+### Phase 6 — フィクスチャテストの導入
+
+目的:
+
+- Phase 3 / Phase 2 の挙動変更前に、主要 scraper の現状を small test で固定する。
+
+作業:
+
+1. 主要サイトの代表 HTML を fixture として保存。
+2. `Document -> ScrapedData` の jsdom small test を追加。
+3. live large test は「アクセス可否 / セレクタ生存監視」に役割を絞る。
+
+優先:
+
+- Amazon
+- FANZA Books / Doujin / Video
+- DLsite Books / Maniax
+- BookWalker
+
+### Phase 3 — Scraper契約の統一
+
+目的:
+
+- scraper を入力アダプタとして安定させる。
+
+作業:
+
+1. `ScrapedData.publishedAt` を `Date | null` に統一。
+2. Amazon content script 側の ad-hoc dayjs parse を scraper / 共通 parse helper 側へ移す。
+3. logging を `src/scraping/utils/logger.ts` に集約。
+4. 散在する scraped data 型を `src/scraping/types.ts` に整理。
+5. Amazon の投機的 fallback selector を、fixture / live DOM で確認済みの selector に削減する。
+
+### Phase 2 — Product責務分離
+
+目的:
+
+- `Product` を browser API 非依存に近づけ、本文生成と正規化を純粋ロジックとしてテストしやすくする。
+
+作業:
+
+1. `titleForSearch` を `src/domain/titleForSearch.ts` へ抽出。
+2. placeholder 展開を `ScrapboxFormatter` に集約。
+3. 各 product class は `toTemplateVars()` と default format を提供するだけに寄せる。
+4. `createScrapboxBodyString` の `browser.storage.sync` 読込を呼び出し側へ移す。
+5. `Product` constructor と `titleForSearch` の半角化重複を解消する。
+
+CI強化:
+
+- `src/domain` 作成後、`domain-must-stay-browser-free` が実効ルールになる。
+- `Product.ts` が `browser` を import しなくなった段階で、旧 root `Product` 系にも同等ルールを追加する。
+
+### Phase 4 — Content Script共通化
+
+目的:
+
+- 各サイトのエントリを薄くし、DOM待ちとバー描画の重複を減らす。
+
+作業:
+
+1. `waitForElement` / `waitForSelector` を共通化。
+2. 詳細ページ系を `{ service, scrape, createProduct, mountPoint }` の宣言的設定に寄せる。
+3. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。
+
+注意:
+
+- Phase 7b で entrypoint 規約が変わる可能性があるため、ファイル移動は最小限にする。
+
+### Phase 5 — サイトレジストリ化
+
+目的:
+
+- 新サイト追加時の散弾編集を減らす。
+
+Phase 7a の結論に従う:
+
+- webpack 維持なら、registry から webpack entry / manifest / declarativeContent を生成する。
+- WXT/Vite 採用なら、自前 generator は作らず、framework の entrypoint / manifest 規約に寄せる。
+
+最低限どの案でも残す情報:
+
+- service
+- host / match pattern
+- product type
+- scraper
+- product factory
+- content script entry
+
+### Phase 7b — ビルド基盤の本移行
+
+目的:
+
+- Phase 7a で webpack 以外を選んだ場合のみ、挙動凍結で移行する。
+
+条件:
+
+- Phase 6 の fixture test が主要サイトに入っている。
+- Phase 1.5 の message boundary が一本化済み。
+- 移行PRではロジック変更を混ぜない。
+
+### Phase 8 — バー UI ランタイム軽量化
+
+目的:
+
+- content script ごとの `react-dom` 重複を削減する。
+
+選択肢:
+
+- Preact compat
+- vanilla DOM
+
+進め方:
+
+- 1サイトだけ PoC し、bundle size と保守性を比較する。
+- popup は React 維持でよい。対象は content script のバー UI のみ。
+
+## 6. リファクタとは別に切り出す Issue
+
+- `titleForSearch` の4語丸めによる「もう買ってるかも」false positive。
+- `SearchResult.existsExactTitleMatch` を実際に使うかどうか。
+- `count >= 1` 判定を厳密化する仕様判断。
