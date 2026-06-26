@@ -5,13 +5,13 @@ import {
   uniPostMessage,
   UniPostMessage,
 } from "./chromeApi";
-import ScrapboxApiClient from "./scrapbox/scrapboxApi"; // For BASE_URL, can be refactored later
 import Page from "./scrapbox/Page"; // Import Page
 import SearchResult, {
   GetPagesSearchResponseInterface,
 } from "./scrapbox/SearchResult"; // Import SearchResult and interface
 import ky from "ky"; // Import ky
 import browser from "webextension-polyfill";
+import { SCRAPBOX_BASE_URL } from "./scrapbox/constants";
 
 const getProjectName = async (): Promise<string> => {
   const items = await browser.storage.sync.get([StorageKeyProjectName]);
@@ -147,7 +147,7 @@ async function performActualScrapboxSearch(
     limit: "30", // Default limit
     q: query,
   });
-  const searchUrl = `${ScrapboxApiClient.BASE_URL}/api/pages/${projectName}/search/query?${params}`;
+  const searchUrl = `${SCRAPBOX_BASE_URL}/api/pages/${projectName}/search/query?${params}`;
   console.log("[eventPage] Performing direct search on Scrapbox:", searchUrl);
   return ky.get(searchUrl, { credentials: "include" }).json();
 }
