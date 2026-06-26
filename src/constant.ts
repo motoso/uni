@@ -1,5 +1,4 @@
 import Port = chrome.runtime.Port;
-import ConnectInfo = chrome.runtime.ConnectInfo;
 
 /**
  * 対応するサービス一覧
@@ -23,54 +22,8 @@ export const AcceptedService = {
 export type AcceptedService =
   (typeof AcceptedService)[keyof typeof AcceptedService];
 
-/**
- * 本のサービス
- * 本でないものは同人誌として扱う
- */
-export const BookService = [
-  AcceptedService.fanza,
-  AcceptedService.dlsite,
-  AcceptedService.amazon,
-  AcceptedService.bookWalker,
-];
-
-export const isBook = (product: AcceptedService) => {
-  for (const service of Object.values(BookService)) {
-    if (service === product) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
- * 動画サービス
- */
-export const VideoService = [
-  AcceptedService.fanzaVideo,
-  AcceptedService.fanzaAnime,
-  AcceptedService.fc2ContentMarket,
-];
-
-/**
- * 動画サービスかどうか
- * @param product
- */
-export const isVideo = (product: AcceptedService) => {
-  for (const service of Object.values(VideoService)) {
-    if (service === product) {
-      return true;
-    }
-  }
-  return false;
-};
-
 export interface UniPort extends Port {
   name: AcceptedService;
-}
-
-export interface UniConnectInfo extends ConnectInfo {
-  name?: AcceptedService;
 }
 
 /**
@@ -80,5 +33,6 @@ export const UniCommand = {
   existsPage: "existsPage",
   createPage: "createPage",
   sendBibliography: "sendBibliography",
+  searchError: "searchError",
 } as const;
 export type UniCommand = (typeof UniCommand)[keyof typeof UniCommand];

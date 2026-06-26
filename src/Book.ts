@@ -10,8 +10,6 @@ class Book extends Product {
   // レーベル
   protected readonly _label: string | null;
 
-  // 要素を増やしたときには makeFromListenerRequest にパラメータを必ず追加してください
-
   private constructor(
     service: AcceptedService,
     title: string,
@@ -48,19 +46,6 @@ class Book extends Product {
       publisher,
       label,
       publishedAt,
-    );
-  }
-
-  public static makeFromListenerRequest(req: any): Book {
-    return Book.make(
-      req._service,
-      req._title,
-      req._authors,
-      req._url,
-      req._publisher,
-      req._label,
-      // TODO: ここ未検証。dayjsのオブジェクトがChromeにばらされたらどうなる？Dayjs()すればなおる？
-      req._publishedAt,
     );
   }
 

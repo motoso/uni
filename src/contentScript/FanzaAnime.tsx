@@ -2,13 +2,10 @@
 import "../organism/Bar.scss";
 
 import { BaseContentScript } from "./BaseContentScript";
-import { AcceptedService, UniCommand } from "../constant";
-import { StorageKeyProjectName, uniPostMessage } from "../chromeApi";
-import SearchResult from "../scrapbox/SearchResult";
+import { AcceptedService } from "../constant";
 import dayjs from "dayjs";
 import Film from "../Film";
 import { scrapeFanzaAnimeData } from "../scraping/fanza-anime-scraper";
-import browser from "webextension-polyfill";
 
 class FanzaAnime extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fanzaAnime;
@@ -23,7 +20,7 @@ class FanzaAnime extends BaseContentScript {
     header.insertAdjacentElement("afterend", rootElement);
   }
 
-  protected scrape(): Film {
+  protected scrape(): Film | null {
     console.log("[FanzaAnime] Starting scrape process...");
 
     // Try immediate scraping first
@@ -109,27 +106,7 @@ class FanzaAnime extends BaseContentScript {
     const film = this.createFilm(scrapedData);
     console.log("[FanzaAnime] Created film object:", film.title);
 
-    // Re-execute the content script flow with the successful data
-    const port = browser.runtime.connect({ name: this.SERVICE });
-    uniPostMessage(port, {
-      command: UniCommand.sendBibliography,
-      product: film,
-    });
-
-    // Handle response (same as BaseContentScript.execute())
-    port.onMessage.addListener(async (msg: any) => {
-      const items = await browser.storage.sync.get([StorageKeyProjectName]);
-      const projectName = items[StorageKeyProjectName] as string;
-
-      if (msg.command === UniCommand.existsPage) {
-        const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-        await this.createAlertBar(result, film, projectName);
-      } else if (msg.command === UniCommand.createPage) {
-        const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-        await this.createPageBar(result, film, projectName);
-      }
-      port.disconnect();
-    });
+    this.searchAndRender(film);
 
     console.log("[FanzaAnime] Delayed scraping flow initiated");
   }

@@ -2,7 +2,7 @@ module.exports = {
     "roots": [
         "<rootDir>/src"
     ],
-    "extensionsToTreatAsEsm": [".ts"],
+    "extensionsToTreatAsEsm": [".ts", ".tsx"],
     "testMatch": [
         "**/__tests__/**/*.+(ts|tsx|js)",
         "**/?(*.)+(spec|test).+(ts|tsx|js)",
@@ -28,7 +28,7 @@ module.exports = {
             "displayName": "small",
             "roots": ["<rootDir>/src"],
             "testMatch": ["**/__tests__/small/**/*.test.(ts|js)"],
-            "extensionsToTreatAsEsm": [".ts"],
+            "extensionsToTreatAsEsm": [".ts", ".tsx"],
             "transform": {
                 "^.+\\.(ts|tsx)$": [
                     "ts-jest",
