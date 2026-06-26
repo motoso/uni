@@ -1,6 +1,7 @@
 dist/
 node_modules
 *.zip
+/curl
 src/popup/popup.html
 
 # claude
@@ -11,4 +12,7 @@ settings.local.json
 # playwright and testing
 playwright-report/
 test-results/
+*-debug-screenshot.png
 debug-spa-timeout-*.png
+*-failed*.txt
+failed-*.txt

@@ -1,102 +1,92 @@
 // Listen to messages sent from other parts of the extension.
-import Book from "./Book";
-import { isBook, isVideo, UniCommand, UniPort } from "./constant";
-import { uniPostMessage, UniPostMessage } from "./chromeApi";
+import { UniCommand, UniPort } from "./constant";
+import {
+  StorageKeyProjectName,
+  uniPostMessage,
+  UniPostMessage,
+} from "./chromeApi";
 import ScrapboxApiClient from "./scrapbox/scrapboxApi"; // For BASE_URL, can be refactored later
 import Page from "./scrapbox/Page"; // Import Page
 import SearchResult, {
   GetPagesSearchResponseInterface,
 } from "./scrapbox/SearchResult"; // Import SearchResult and interface
-import Doujinshi from "./Doujinshi";
-import Film from "./Film";
 import ky from "ky"; // Import ky
 import browser from "webextension-polyfill";
 
-// Reads all data out of storage.sync and exposes it via a promise.
-async function getAllStorageSyncData(): Promise<{ [key: string]: any }> {
-  return await browser.storage.sync.get(null);
-}
-
-// Where we will expose all the data we retrieve from storage.sync.
-const storageCache = {};
-// Asynchronously retrieve data from storage.sync, then cache it.
-const initStorageCache = getAllStorageSyncData().then((items) => {
-  // Copy the data retrieved from storage into storageCache.
-  Object.assign(storageCache, items);
-});
-const getProjectName = (): string => {
-  return storageCache["projectName"] ?? "";
+const getProjectName = async (): Promise<string> => {
+  const items = await browser.storage.sync.get([StorageKeyProjectName]);
+  return (items[StorageKeyProjectName] as string) ?? "";
 };
+
+type SearchDependencies = {
+  getProjectName: () => Promise<string>;
+  search: (
+    projectName: string,
+    query: string,
+  ) => Promise<GetPagesSearchResponseInterface>;
+};
+
+export async function handleBibliographySearchMessage(
+  msg: UniPostMessage,
+  postMessage: (message: UniPostMessage) => void,
+  dependencies: SearchDependencies = {
+    getProjectName,
+    search: performActualScrapboxSearch,
+  },
+): Promise<void> {
+  if (msg.command !== UniCommand.sendBibliography) {
+    return;
+  }
+
+  try {
+    if (!msg.query) {
+      throw new Error("Missing Scrapbox search query");
+    }
+
+    const currentProjectName = await dependencies.getProjectName();
+    const rawRes = await dependencies.search(currentProjectName, msg.query);
+
+    const pages = rawRes.pages.map((pageData) => {
+      return Page.make(
+        pageData.title,
+        pageData.image,
+        pageData.lines.join("\n"),
+        currentProjectName,
+      );
+    });
+    const searchResult = SearchResult.make(
+      rawRes.count,
+      rawRes.projectName, // This should be currentProjectName or rawRes.projectName if available and reliable
+      rawRes.searchQuery,
+      pages,
+    );
+
+    console.log("[eventPage] Search successful (via onConnect):", searchResult);
+    if (searchResult.count >= 1) {
+      postMessage({
+        command: UniCommand.existsPage,
+        searchResult: searchResult,
+      });
+    } else {
+      postMessage({
+        command: UniCommand.createPage,
+        searchResult: searchResult,
+      });
+    }
+  } catch (error) {
+    console.error("[eventPage] Error during search (via onConnect):", error);
+    postMessage({
+      command: UniCommand.searchError,
+      error: toMessageError(error),
+    });
+  }
+}
 
 browser.runtime.onConnect.addListener((port: UniPort) => {
   port.onMessage.addListener(async (msg: UniPostMessage) => {
-    try {
-      await initStorageCache;
-    } catch (e) {
-      // Handle error that occurred during storage initialization.
-    }
-
-    if (msg.command === UniCommand.sendBibliography && msg.product) {
-      // addlistenerで受け取ったrequestは型情報が失われているので型をつける
-      // @ts-ignore
-      const service = msg.product._service;
-      let product;
-      if (isBook(service)) {
-        product = Book.makeFromListenerRequest(msg.product);
-      } else if (isVideo(service)) {
-        product = Film.makeFromListenerRequest(msg.product);
-      } else {
-        product = Doujinshi.makeFromListenerRequest(msg.product);
-      }
-
-      // Directly use performActualScrapboxSearch and reconstruct SearchResult
-      try {
-        const currentProjectName = getProjectName();
-        const rawRes: GetPagesSearchResponseInterface =
-          await performActualScrapboxSearch(
-            currentProjectName,
-            product.titleForSearch,
-          );
-
-        const pages = rawRes.pages.map((pageData) => {
-          return Page.make(
-            pageData.title,
-            pageData.image,
-            pageData.lines.join("\n"),
-            currentProjectName,
-          );
-        });
-        const searchResult = SearchResult.make(
-          rawRes.count,
-          rawRes.projectName, // This should be currentProjectName or rawRes.projectName if available and reliable
-          rawRes.searchQuery,
-          pages,
-        );
-
-        console.log(
-          "[eventPage] Search successful (via onConnect):",
-          searchResult,
-        );
-        if (searchResult.count >= 1) {
-          uniPostMessage(port, {
-            command: UniCommand.existsPage,
-            searchResult: searchResult,
-          });
-        } else {
-          uniPostMessage(port, {
-            command: UniCommand.createPage,
-            searchResult: searchResult,
-          });
-        }
-      } catch (error) {
-        console.error(
-          "[eventPage] Error during search (via onConnect):",
-          error,
-        );
-        // Optionally send an error message back via the port if the UniPostMessage protocol supports it
-        // For now, just logging, as the original code didn't have explicit error sending here.
-      }
-    }
+    await handleBibliographySearchMessage(msg, (message) => {
+      uniPostMessage(port, message);
+    });
   });
 });
 
@@ -150,8 +140,7 @@ browser.runtime.onInstalled.addListener((details) => {
 async function performActualScrapboxSearch(
   projectName: string,
   query: string,
-): Promise<any> {
-  // Consider defining a stricter return type if GetPagesSearchResponseInterface is accessible
+): Promise<GetPagesSearchResponseInterface> {
   const params = new URLSearchParams({
     skip: "0",
     sort: "updated",
@@ -161,6 +150,13 @@ async function performActualScrapboxSearch(
   const searchUrl = `${ScrapboxApiClient.BASE_URL}/api/pages/${projectName}/search/query?${params}`;
   console.log("[eventPage] Performing direct search on Scrapbox:", searchUrl);
   return ky.get(searchUrl, { credentials: "include" }).json();
+}
+
+function toMessageError(error: unknown): { message: string; name?: string } {
+  if (error instanceof Error) {
+    return { message: error.message, name: error.name };
+  }
+  return { message: String(error) };
 }
 
 // Listener for search requests from content scripts

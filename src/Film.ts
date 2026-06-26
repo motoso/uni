@@ -63,19 +63,6 @@ class Film extends Product {
 `;
   }
 
-  public static makeFromListenerRequest(request: any): Film {
-    return Film.make(
-      request._service,
-      request._title,
-      request._actors,
-      request._director,
-      request._url,
-      request._publishedAt,
-      request._label,
-      request._id,
-    );
-  }
-
   protected replacePlaceholders(format: string): string {
     let result = super.replacePlaceholders(format); // 基本的な置換を親クラスに任せる
     result = result

@@ -26,7 +26,7 @@ export abstract class BaseContentScript {
    * サービスのHTMLに依存する
    * @protected
    */
-  protected abstract scrape(): Product;
+  protected abstract scrape(): Product | null;
 
   /**
    * 開いたページの上部のいい感じの要素を開発ツールで調べて指定する
@@ -37,29 +37,44 @@ export abstract class BaseContentScript {
 
   execute() {
     const product = this.scrape();
+    if (!product) {
+      return;
+    }
 
+    this.searchAndRender(product);
+  }
+
+  protected searchAndRender(product: Product): void {
     // コネクションを張って、存在しているかどうかを出す
     const port = browser.runtime.connect({ name: this.SERVICE });
     uniPostMessage(port, {
       command: UniCommand.sendBibliography,
-      product: product,
+      query: product.titleForSearch,
     });
 
     // 返答待ち
     port.onMessage.addListener(async (msg: UniPostMessage) => {
-      const items = await browser.storage.sync.get([StorageKeyProjectName]);
-      const projectName = items[StorageKeyProjectName] as string;
-      if (msg.command === UniCommand.existsPage) {
-        // Message passingで型の情報がなくなっているので修正
-        const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-        await this.createAlertBar(result, product, projectName);
-      } else if (msg.command === UniCommand.createPage) {
-        // Message passingで型の情報がなくなっているので修正
-        const result = SearchResult.makeFromListenerRequest(msg.searchResult);
-        await this.createPageBar(result, product, projectName);
+      try {
+        if (msg.command === UniCommand.searchError) {
+          console.error("[uni] Scrapbox search failed:", msg.error);
+          return;
+        }
+
+        const items = await browser.storage.sync.get([StorageKeyProjectName]);
+        const projectName = items[StorageKeyProjectName] as string;
+        if (msg.command === UniCommand.existsPage) {
+          // Message passingで型の情報がなくなっているので修正
+          const result = SearchResult.makeFromListenerRequest(msg.searchResult);
+          await this.createAlertBar(result, product, projectName);
+        } else if (msg.command === UniCommand.createPage) {
+          // Message passingで型の情報がなくなっているので修正
+          const result = SearchResult.makeFromListenerRequest(msg.searchResult);
+          await this.createPageBar(result, product, projectName);
+        }
+      } finally {
+        // 処理が終了したので切断する
+        port.disconnect();
       }
-      // 処理が終了したので切断する
-      port.disconnect();
     });
   }
 

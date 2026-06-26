@@ -1,7 +1,5 @@
-import Book from "./Book";
 import SearchResult from "./scrapbox/SearchResult";
 import { UniCommand } from "./constant";
-import Product from "./Product";
 import browser from "webextension-polyfill";
 
 type Port = browser.Runtime.Port;
@@ -21,8 +19,12 @@ type Port = browser.Runtime.Port;
  */
 export type UniPostMessage = {
   command: UniCommand;
-  product?: Product;
+  query?: string;
   searchResult?: SearchResult;
+  error?: {
+    message: string;
+    name?: string;
+  };
 };
 
 export function uniPostMessage(port: Port, message: UniPostMessage) {

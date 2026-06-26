@@ -81,21 +81,6 @@ class Asmr extends Product {
     return draft;
   }
 
-  public static makeFromListenerRequest(req: any): Asmr {
-    return Asmr.make(
-      req._service,
-      req._title,
-      req._authors,
-      req._url,
-      req._publishedAt,
-      req._circleName,
-      req._eventName,
-      req._illustrators,
-      req._voiceActors,
-      req._writers,
-    );
-  }
-
   protected replacePlaceholders(format: string): string {
     let result = super.replacePlaceholders(format);
     result = result.replace(
