@@ -1,5 +1,6 @@
 import { describe, expect, test } from "@jest/globals";
 import { parseHTML } from "linkedom";
+import { scrapeAmazonData } from "../../../scraping/amazon-scraper";
 import { scrapeBookWalkerData } from "../../../scraping/bookwalker-scraper";
 import { scrapeDLsiteBooksData } from "../../../scraping/dlsite-books-scraper";
 import { scrapeDLsiteManiaxData } from "../../../scraping/dlsite-maniax-scraper";
@@ -7,6 +8,7 @@ import { scrapeFanzaBooksData } from "../../../scraping/fanza-books-scraper";
 import { scrapeFanzaDoujinData } from "../../../scraping/fanza-doujin-scraper";
 import { scrapeFanzaVideoData } from "../../../scraping/fanza-video-scraper";
 import {
+  amazonHtml,
   bookWalkerHtml,
   dlsiteBooksHtml,
   dlsiteManiaxHtml,
@@ -158,6 +160,23 @@ describe("scraper fixtures from real product HTML", () => {
       label: "週刊少年マガジン",
       publishedAt: "2024/11/15",
       url: "https://bookwalker.jp/defb2e0181-c515-4443-9039-11b07c68a30b/",
+    });
+  });
+
+  test("extracts Amazon details from captured product page", () => {
+    const document = documentFromRealHtml(
+      amazonHtml,
+      "https://www.amazon.co.jp/dp/4758069778/?language=ja_JP",
+    );
+
+    const result = scrapeAmazonData(document);
+
+    expect(result).toEqual({
+      title: "お兄ちゃんはおしまい! (6) (IDコミックス)",
+      authors: ["ねことうふ"],
+      publisher: null,
+      publishedAt: "2022/4/27",
+      url: "https://www.amazon.co.jp/dp/4758069778/?language=ja_JP",
     });
   });
 });
