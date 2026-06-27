@@ -1,26 +1,28 @@
 # uni リファクタリング計画（Phase 1 完了後）
 
-> 更新: 2026-06-26 / 最新 `main` (`af3e6fb`, `[codex] Refactor Scrapbox search message boundary`) を基準に再定義。
+> 更新: 2026-06-27 / 最新 `main` (`26c35f9`, `docs: ADR-002 ビルド/エントリ基盤の方針 (Phase 7a)`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
+> Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
+> Phase 6（フィクスチャテストの導入）は着手済み。実ページ由来 HTML fixture と Small characterization test を追加済み。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
 
 `uni` は Chrome / Firefox 向けのブラウザ拡張で、対応 EC / メディアサイトの商品ページから書誌情報を読み取り、Cosense(Scrapbox) に蔵書ページを作成・既存ページを検出する。
 
-Phase 1 の結果、最大の負債だった「`Product` インスタンスを background へ送って型を失い、`Book`/`Film`/`Asmr` へ復元する」経路は解消済み。Phase 1.5 の結果、検索経路は `browser.runtime.sendMessage` に統一され、background に渡る検索入力は `action` と `query` だけになっている。
+Phase 1 の結果、最大の負債だった「`Product` インスタンスを background へ送って型を失い、`Book`/`Film`/`Asmr` へ復元する」経路は解消済み。Phase 1.5 の結果、検索経路は `browser.runtime.sendMessage` に統一され、background に渡る検索入力は `action` と `query` だけになっている。Phase 7a の結果、Phase 5 は framework 非依存の plain site registry 集約に留め、WXT 移行は Phase 6 後の Phase 7b で行う方針になっている。
 
 現在の主要構成:
 
-| 領域           | ファイル                                                     | 現状                                                                       |
-| -------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Content Script | `src/contentScript/*.tsx`                                    | サイトごとの注入エントリ。`Product` は content script 側に留まる           |
-| Scraper        | `src/scraping/*.ts`                                          | `Document -> ScrapedData \| null` の入力アダプタ                           |
-| Product        | `Product` + `Book`/`Doujinshi`/`Film`/`Asmr`/`DLsiteProduct` | まだタイトル正規化・本文生成・storage 読込が同居                           |
-| Background     | `src/eventPage.ts`                                           | `onMessage` で検索 request/response DTO を処理                             |
-| Scrapbox       | `src/scrapbox/*`                                             | API response 型、検索 DTO、content-side message client                     |
-| Popup/UI       | `src/popup/*`, `src/organism/*`                              | 設定 UI と content script のバー UI                                        |
+| 領域           | ファイル                                                     | 現状                                                             |
+| -------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Content Script | `src/contentScript/*.tsx`                                    | サイトごとの注入エントリ。`Product` は content script 側に留まる |
+| Scraper        | `src/scraping/*.ts`                                          | `Document -> ScrapedData \| null` の入力アダプタ                 |
+| Product        | `Product` + `Book`/`Doujinshi`/`Film`/`Asmr`/`DLsiteProduct` | まだタイトル正規化・本文生成・storage 読込が同居                 |
+| Background     | `src/eventPage.ts`                                           | `onMessage` で検索 request/response DTO を処理                   |
+| Scrapbox       | `src/scrapbox/*`                                             | API response 型、検索 DTO、content-side message client           |
+| Popup/UI       | `src/popup/*`, `src/organism/*`                              | 設定 UI と content script のバー UI                              |
 
 ## 1. 設計判断
 
@@ -150,7 +152,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 は完了済みとして扱う。次は Phase 5 の作り込み方を左右する Phase 7a を優先する。
+Phase 1 / Phase 1.5 / Phase 7a は完了済みとして扱う。最新の作業対象は Phase 6。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -194,7 +196,14 @@ Phase 1 / Phase 1.5 は完了済みとして扱う。次は Phase 5 の作り込
 - `makeFromListenerRequest` が production code から消える。
 - `SearchResult` class が message DTO として使われない。
 
-### Phase 7a — ビルド/エントリ基盤の方針決定 ADR
+### Phase 7a — ビルド/エントリ基盤の方針決定 ADR（完了）
+
+実施済み:
+
+- `docs/adr/002-build-and-entrypoint-foundation.md` を追加。
+- 現状 webpack の baseline と WXT PoC を比較し、WXT 採用方針を確定。
+- Phase 5 では自前 generator を作り込まず、framework 非依存の plain registry 集約に留める方針を明記。
+- Phase 7b は Phase 6 fixture test 後に、ロジック変更を混ぜず WXT 移行として実施する方針を明記。
 
 目的:
 
@@ -225,10 +234,19 @@ Phase 1 / Phase 1.5 は完了済みとして扱う。次は Phase 5 の作り込
 
 - Phase 3 / Phase 2 の挙動変更前に、主要 scraper の現状を small test で固定する。
 
+着手済み:
+
+- `scripts/capture-real-scraper-fixtures.mjs` を追加し、Large 監視 URL から実ページ HTML fixture を再生成できるようにした。
+- `src/__tests__/small/scraping/fixtures/real-html.ts` に実ページ由来 HTML fixture を追加。
+- `src/__tests__/small/scraping/scraper-fixtures.test.ts` で `Document -> ScrapedData` の現行挙動を exact assertion で固定。
+- Jest の `jsdom` import が `parse5` の ESM/CJS 境界で失敗するため、Small test 側は `linkedom` で HTML を parse する。`linkedom` に不足する `document.location.href` / `table.rows` / `tr.cells` だけを test helper で補う。
+- 対象: FANZA Books / Doujin / Video、DLsite Books / Maniax、BookWalker。
+- Amazon は bot/CAPTCHA で live HTML 取得が安定しないため、この差分では fixture 化を保留。手動保存 HTML または別取得経路が用意できた段階で追加する。
+
 作業:
 
-1. 主要サイトの代表 HTML を fixture として保存。
-2. `Document -> ScrapedData` の jsdom small test を追加。
+1. 主要サイトの代表 HTML を fixture として保存する。
+2. `Document -> ScrapedData` の DOM fixture small test を追加。
 3. live large test は「アクセス可否 / セレクタ生存監視」に役割を絞る。
 
 優先:
