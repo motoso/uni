@@ -42,7 +42,7 @@ class FanzaBooks extends BaseContentScript {
       scrapedData.url,
       scrapedData.publisher,
       scrapedData.label,
-      dayjs(scrapedData.publishedAt),
+      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
     );
   }
 }

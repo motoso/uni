@@ -7,11 +7,28 @@ export interface BookWalkerScrapedData {
   authors: string[];
   publisher: string | null;
   label: string | null;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   url: string;
 }
 
 export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    if (!value) return null;
+
+    const normalized = value.replace(/[０-９]/g, (s) =>
+      String.fromCharCode(s.charCodeAt(0) - 0xFEE0),
+    );
+    const dateMatch = normalized.match(
+      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
+    );
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     const titleElement = document.querySelector("h1");
     if (!titleElement) return null;
@@ -69,17 +86,12 @@ export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData 
       }
     }
 
-    // Convert full-width characters to half-width if needed
-    const convertToHalfWidth = (str: string): string => {
-      return str.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-    };
-
     return {
       title,
       authors,
       publisher,
       label,
-      publishedAt: publishedAt ? convertToHalfWidth(publishedAt) : null,
+      publishedAt: parsePublishedAt(publishedAt),
       url
     };
   } catch (error) {

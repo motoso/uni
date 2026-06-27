@@ -22,7 +22,7 @@ class Asmr extends Product {
     title: string,
     authors: string[],
     url: string,
-    publishedAt: Dayjs,
+    publishedAt: Dayjs | null,
     circleName: string,
     eventName: string | null,
     illustrators: string[] | null,

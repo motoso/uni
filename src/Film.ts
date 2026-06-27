@@ -16,7 +16,7 @@ class Film extends Product {
     actors: string[],
     director: string | null,
     url: string,
-    publishedAt: Dayjs,
+    publishedAt: Dayjs | null,
     label: string | null,
     id: string | null,
   ) {
@@ -36,7 +36,7 @@ class Film extends Product {
     actors: string[],
     director: string | null,
     url: string,
-    publishedAt: Dayjs,
+    publishedAt: Dayjs | null,
     label: string | null,
     id: string | null,
   ): Film {

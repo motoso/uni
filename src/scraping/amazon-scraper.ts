@@ -6,7 +6,7 @@ export interface AmazonScrapedData {
   title: string;
   authors: string[];
   publisher: string | null;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   url: string;
 }
 
@@ -18,6 +18,21 @@ export function scrapeAmazonData(document: Document): AmazonScrapedData | null {
     if (isCI) {
       console.log(`[Amazon-Scraper] ${message}`);
     }
+  };
+
+  const parsePublishedAt = (value: string | null): Date | null => {
+    if (!value) return null;
+
+    const dateMatch = value.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch;
+      return new Date(
+        `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+      );
+    }
+
+    const parsedAt = new Date(value.trim());
+    return Number.isNaN(parsedAt.getTime()) ? null : parsedAt;
   };
 
   try {
@@ -125,7 +140,7 @@ export function scrapeAmazonData(document: Document): AmazonScrapedData | null {
     }
 
     // Extract publication date (Japanese and English support)
-    let publishedAt = null;
+    let publishedAtText = null;
     const publishedAtRows = productDetails.filter((i) => {
       const text = (i as HTMLElement).textContent || '';
       return text.includes("発売日") || text.includes("Publication date");
@@ -143,7 +158,7 @@ export function scrapeAmazonData(document: Document): AmazonScrapedData | null {
       for (const pattern of publishedAtPatterns) {
         const publishedAtMatch = publishedAtRow.textContent?.match(pattern);
         if (publishedAtMatch) {
-          publishedAt = publishedAtMatch[1].trim();
+          publishedAtText = publishedAtMatch[1].trim();
           break;
         }
       }
@@ -182,7 +197,7 @@ export function scrapeAmazonData(document: Document): AmazonScrapedData | null {
       title,
       authors,
       publisher,
-      publishedAt,
+      publishedAt: parsePublishedAt(publishedAtText),
       url
     };
   } catch (error) {

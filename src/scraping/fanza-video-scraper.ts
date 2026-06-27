@@ -14,6 +14,16 @@ export function scrapeFanzaVideoData(document: Document): FanzaVideoScrapedData 
     }
   };
 
+  const parsePublishedAt = (value: string): Date | null => {
+    const dateMatch = value.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   log('Starting FANZA Video scraping...');
 
   // タイトル取得 - より多くのセレクターを試行
@@ -117,14 +127,7 @@ export function scrapeFanzaVideoData(document: Document): FanzaVideoScrapedData 
 
   // 配信開始日を取得
   const publishedAtText = getValueByKey("配信開始日");
-  let publishedAt = new Date();
-  if (publishedAtText) {
-    // YYYY/MM/DD形式をパース
-    const dateMatch = publishedAtText.match(/(\d{4})\/(\d{2})\/(\d{2})/);
-    if (dateMatch) {
-      publishedAt = new Date(dateMatch.slice(1).join("-"));
-    }
-  }
+  const publishedAt = parsePublishedAt(publishedAtText);
 
   // 品番を取得（メーカー品番から）
   const id = getValueByKey("メーカー品番") || getValueByKey("配信品番") || "";

@@ -7,13 +7,23 @@ export interface FanzaAnimeScrapedData {
   actress: string[];
   director: string | null;
   label: string;
-  publishedAt: Date;
+  publishedAt: Date | null;
   id: string;
   manufacturerProductNumber: string;
   url: string;
 }
 
 export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData | null {
+  const parsePublishedAt = (value: string): Date | null => {
+    const dateMatch = value.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     console.log('[FANZA Anime] Starting scraping process...');
     console.log('[FANZA Anime] Page URL:', document.location?.href);
@@ -106,10 +116,7 @@ export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData 
     const label = getValueByLabel("レーベル") || "";
 
     const publishedAtStr = getValueByLabel("配信開始日") || "";
-    const dateMatch = publishedAtStr.match(/(\d{4})\/(\d{2})\/(\d{2})/);
-    const publishedAt = dateMatch
-      ? new Date(dateMatch.slice(1).join("-"))
-      : new Date();
+    const publishedAt = parsePublishedAt(publishedAtStr);
 
     const id = getValueByLabel("品番") || "";
     const manufacturerProductNumber = getValueByLabel("メーカー品番") || "";

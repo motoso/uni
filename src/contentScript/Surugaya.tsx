@@ -42,7 +42,7 @@ class Surugaya extends BaseContentScript {
 
     const publishedAt = scrapedData.publishedAt
       ? dayjs(scrapedData.publishedAt)
-      : dayjs();
+      : null;
 
     // background scriptに送る
     return Doujinshi.make(

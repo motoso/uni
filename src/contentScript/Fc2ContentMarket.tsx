@@ -34,7 +34,7 @@ class FC2ContentMarket extends BaseContentScript {
       [], // actress
       scrapedData.director === "" ? null : scrapedData.director,
       scrapedData.url,
-      dayjs(scrapedData.publishedAt),
+      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
       "", // label
       scrapedData.id,
     );

@@ -34,17 +34,9 @@ class Amazon extends BaseContentScript {
       return null;
     }
 
-    // Parse publishedAt if available
-    let publishedAt = dayjs();
-    if (scrapedData.publishedAt) {
-      // Try to parse various date formats
-      const dateStr = scrapedData.publishedAt;
-      if (dateStr.includes("/")) {
-        publishedAt = dayjs(dateStr.split("/").join("-"));
-      } else {
-        publishedAt = dayjs(dateStr);
-      }
-    }
+    const publishedAt = scrapedData.publishedAt
+      ? dayjs(scrapedData.publishedAt)
+      : null;
 
     // background scriptに送る
     return Book.make(

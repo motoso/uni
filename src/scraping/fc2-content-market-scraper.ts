@@ -5,12 +5,19 @@
 export interface Fc2ContentMarketScrapedData {
   title: string;
   director: string;
-  publishedAt: Date;
+  publishedAt: Date | null;
   id: string;
   url: string;
 }
 
 export function scrapeFc2ContentMarketData(document: Document): Fc2ContentMarketScrapedData | null {
+  const parsePublishedAt = (value: string): Date | null => {
+    if (!value) return null;
+
+    const parsedAt = new Date(value);
+    return Number.isNaN(parsedAt.getTime()) ? null : parsedAt;
+  };
+
   try {
     const titleElement = document.querySelector(
       "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > h3"
@@ -32,7 +39,7 @@ export function scrapeFc2ContentMarketData(document: Document): Fc2ContentMarket
       "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > div:nth-child(5) > p"
     );
     const publishedAtStr = publishedAtElement?.textContent?.trim() || "";
-    const publishedAt = publishedAtStr ? new Date(publishedAtStr) : new Date();
+    const publishedAt = parsePublishedAt(publishedAtStr);
 
     const idMatch = url.match(/\/article\/(\d+)\//);
     const id = idMatch ? idMatch[1] : "";

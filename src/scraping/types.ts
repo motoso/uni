@@ -8,7 +8,7 @@ export interface FanzaVideoScrapedData {
   actress: string[];
   director: string | null;
   label: string;
-  publishedAt: Date;
+  publishedAt: Date | null;
   id: string;
 }
 
@@ -26,5 +26,5 @@ export interface FanzaBooksScrapedData {
   authors: string[];
   label: string;
   publisher: string;
-  publishedAt: Date;
+  publishedAt: Date | null;
 }

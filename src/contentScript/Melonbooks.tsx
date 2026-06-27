@@ -36,10 +36,9 @@ class Melonbooks extends BaseContentScript {
       return null;
     }
 
-    // Parse publishedAt if available
     const publishedAt = scrapedData.publishedAt
       ? dayjs(scrapedData.publishedAt)
-      : dayjs();
+      : null;
 
     // background scriptに送る
     return Doujinshi.make(
