@@ -1,6 +1,7 @@
 import Product, { ProductType } from "./Product";
 import { Dayjs } from "dayjs";
 import { AcceptedService } from "./constant";
+import { pageLink, ScrapboxTemplateVars } from "./domain/scrapboxFormatter";
 
 /**
  * 映画
@@ -63,13 +64,13 @@ class Film extends Product {
 `;
   }
 
-  protected replacePlaceholders(format: string): string {
-    let result = super.replacePlaceholders(format); // 基本的な置換を親クラスに任せる
-    result = result
-      .replace(/\{director\}/g, this._director ? `[${this._director}]` : "")
-      .replace(/\{id\}/g, this._id || "") // this._id が null の場合も考慮
-      .replace(/\{label\}/g, this._label ? `[${this._label}]` : "");
-    return result;
+  protected toTemplateVars(): ScrapboxTemplateVars {
+    return {
+      ...super.toTemplateVars(),
+      director: pageLink(this._director),
+      id: this._id || "",
+      label: pageLink(this._label),
+    };
   }
 }
 
