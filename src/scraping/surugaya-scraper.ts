@@ -2,15 +2,14 @@
  * Pure function to scrape Surugaya data from the DOM
  */
 
-export interface SurugayaScrapedData {
-  title: string;
-  authors: string[];
-  publisher: string | null;
-  publishedAt: Date | null;
-  url: string;
-}
+import type { SurugayaScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeSurugayaData(document: Document): SurugayaScrapedData | null {
+const logger = createScraperLogger("Surugaya-Scraper");
+
+export function scrapeSurugayaData(
+  document: Document,
+): SurugayaScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
     if (!value) return null;
 
@@ -22,11 +21,11 @@ export function scrapeSurugayaData(document: Document): SurugayaScrapedData | nu
     const titleElement = document.querySelector("#item_title");
     if (!titleElement) return null;
 
-    const title = titleElement.textContent?.trim() || '';
-    const url = document.location?.href || '';
+    const title = titleElement.textContent?.trim() || "";
+    const url = document.location?.href || "";
 
     const mainTable = document.querySelector(
-      "#item_detailInfo > div:nth-child(1) > table"
+      "#item_detailInfo > div:nth-child(1) > table",
     ) as HTMLElement;
 
     if (!mainTable) return null;
@@ -71,7 +70,7 @@ export function scrapeSurugayaData(document: Document): SurugayaScrapedData | nu
       url,
     };
   } catch (error) {
-    console.error('Error scraping Surugaya data:', error);
+    logger.error("Error scraping Surugaya data:", error);
     return null;
   }
 }

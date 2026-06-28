@@ -2,18 +2,14 @@
  * Pure function to scrape Toranoana data from the DOM
  */
 
-export interface ToranoanaScrapedData {
-  title: string;
-  authors: string[];
-  circleName: string;
-  genre: string[];
-  mainCharacters: string[];
-  eventName: string | null;
-  publishedAt: Date | null;
-  url: string;
-}
+import type { ToranoanaScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | null {
+const logger = createScraperLogger("Toranoana-Scraper");
+
+export function scrapeToranoanaData(
+  document: Document,
+): ToranoanaScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
     const dateMatch = value?.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (!dateMatch) return null;
@@ -25,28 +21,32 @@ export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | 
   };
 
   try {
-    const titleElement = document.querySelector(".product-detail-desc-title span");
+    const titleElement = document.querySelector(
+      ".product-detail-desc-title span",
+    );
     if (!titleElement) return null;
 
-    const title = titleElement.textContent?.trim() || '';
-    const url = document.location?.href || '';
+    const title = titleElement.textContent?.trim() || "";
+    const url = document.location?.href || "";
 
     const circleElement = document.querySelector(".sub-circle .sub-p");
-    const circleName = circleElement?.textContent?.trim() || '';
+    const circleName = circleElement?.textContent?.trim() || "";
 
     const authorElement = document.querySelector(".sub-name .sub-p");
-    const author = authorElement?.textContent?.trim() || '';
+    const author = authorElement?.textContent?.trim() || "";
 
-    const table = document.getElementsByClassName("product-detail-spec-table")[0];
+    const table = document.getElementsByClassName(
+      "product-detail-spec-table",
+    )[0];
     if (!table) return null;
 
     // Extract genre information
-    const genreElements = (table as HTMLTableElement).rows[2]?.cells[1]?.querySelectorAll(
-      ".js-product-detail-spec-genre"
-    );
+    const genreElements = (
+      table as HTMLTableElement
+    ).rows[2]?.cells[1]?.querySelectorAll(".js-product-detail-spec-genre");
     const genre = genreElements
       ? Array.from(genreElements)
-          .map((item) => item.textContent?.trim() || '')
+          .map((item) => item.textContent?.trim() || "")
           .filter((item) => !["", "入荷アラートを設定"].includes(item))
       : [];
 
@@ -56,7 +56,10 @@ export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | 
 
       // Debug: Log all available headers for troubleshooting
       if (leftHeaderStr === "発行日") {
-        console.log("Available table headers:", rows.map(row => row.cells[0]?.textContent?.trim()).filter(Boolean));
+        logger.debug(
+          "Available table headers:",
+          rows.map((row) => row.cells[0]?.textContent?.trim()).filter(Boolean),
+        );
       }
 
       const filtered = rows.filter((row) => {
@@ -70,7 +73,9 @@ export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | 
     };
 
     const mainCharactersStr = getElemIfExists("メインキャラ");
-    const mainCharacters = mainCharactersStr ? mainCharactersStr.split(" ") : [];
+    const mainCharacters = mainCharactersStr
+      ? mainCharactersStr.split(" ")
+      : [];
 
     // Extract event information - remove date prefix
     const eventStr = getElemIfExists("初出イベント");
@@ -96,7 +101,7 @@ export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | 
       url,
     };
   } catch (error) {
-    console.error('Error scraping Toranoana data:', error);
+    logger.error("Error scraping Toranoana data:", error);
     return null;
   }
 }

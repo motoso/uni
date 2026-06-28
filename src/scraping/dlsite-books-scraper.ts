@@ -2,16 +2,14 @@
  * Pure function to scrape DLsite Books data from the DOM
  */
 
-export interface DLsiteBooksScrapedData {
-  title: string;
-  authors: string[];
-  label: string | null;
-  publisher: string;
-  publishedAt: Date | null;
-  url: string;
-}
+import type { DLsiteBooksScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeDLsiteBooksData(document: Document): DLsiteBooksScrapedData | null {
+const logger = createScraperLogger("DLsite-Books-Scraper");
+
+export function scrapeDLsiteBooksData(
+  document: Document,
+): DLsiteBooksScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
     const dateMatch = value?.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
     if (!dateMatch) return null;
@@ -37,7 +35,10 @@ export function scrapeDLsiteBooksData(document: Document): DLsiteBooksScrapedDat
     if (!table || !outlineTable) return null;
 
     // Helper function to get element from table if left header matches
-    const getElemIfExists = (leftHeaderStr: string, sourceTable: HTMLElement): string | null => {
+    const getElemIfExists = (
+      leftHeaderStr: string,
+      sourceTable: HTMLElement,
+    ): string | null => {
       const filtered = [...(sourceTable as HTMLTableElement).rows].filter(
         (row) => row.cells[0].innerText.trim() === leftHeaderStr,
       );
@@ -54,7 +55,8 @@ export function scrapeDLsiteBooksData(document: Document): DLsiteBooksScrapedDat
 
     const publisherStr = getElemIfExists("出版社名", table);
     // 出版社名\nフォローする\n1234 -> 出版社名
-    const publisher = publisherStr?.match(/(^.*)\r?\n/)?.[1] || publisherStr || "";
+    const publisher =
+      publisherStr?.match(/(^.*)\r?\n/)?.[1] || publisherStr || "";
 
     const publishedAtStr = getElemIfExists("販売日", outlineTable);
     const publishedAt = parsePublishedAt(publishedAtStr);
@@ -68,7 +70,7 @@ export function scrapeDLsiteBooksData(document: Document): DLsiteBooksScrapedDat
       url,
     };
   } catch (error) {
-    console.error('Error scraping DLsite Books data:', error);
+    logger.error("Error scraping DLsite Books data:", error);
     return null;
   }
 }

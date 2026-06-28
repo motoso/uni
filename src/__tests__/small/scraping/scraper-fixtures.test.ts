@@ -174,7 +174,7 @@ describe("scraper fixtures from real product HTML", () => {
     expect(result).toEqual({
       title: "お兄ちゃんはおしまい! (6) (IDコミックス)",
       authors: ["ねことうふ"],
-      publisher: null,
+      publisher: "一迅社",
       publishedAt: new Date("2022-04-27"),
       url: "https://www.amazon.co.jp/dp/4758069778/?language=ja_JP",
     });

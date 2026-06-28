@@ -2,25 +2,21 @@
  * Pure function to scrape BookWalker book data from the DOM
  */
 
-export interface BookWalkerScrapedData {
-  title: string;
-  authors: string[];
-  publisher: string | null;
-  label: string | null;
-  publishedAt: Date | null;
-  url: string;
-}
+import type { BookWalkerScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData | null {
+const logger = createScraperLogger("BookWalker-Scraper");
+
+export function scrapeBookWalkerData(
+  document: Document,
+): BookWalkerScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
     if (!value) return null;
 
     const normalized = value.replace(/[０-９]/g, (s) =>
-      String.fromCharCode(s.charCodeAt(0) - 0xFEE0),
+      String.fromCharCode(s.charCodeAt(0) - 0xfee0),
     );
-    const dateMatch = normalized.match(
-      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/,
-    );
+    const dateMatch = normalized.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (!dateMatch) return null;
 
     const [, year, month, day] = dateMatch;
@@ -33,34 +29,38 @@ export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData 
     const titleElement = document.querySelector("h1");
     if (!titleElement) return null;
 
-    let title = titleElement.textContent?.trim() || '';
+    let title = titleElement.textContent?.trim() || "";
     // 【コミック版】みたいな情報は除去（ただし【推しの子】は除外）
     title = title.replace(/【(?!推しの子).*?】/g, "").trim();
 
-    const url = document.location?.href || '';
+    const url = document.location?.href || "";
 
     // Helper function to get info by label from definition list structure
     const getInfoByLabel = (labelText: string): string => {
       // まず定義リスト構造（dt/dd）で検索
-      const dtElements = Array.from(document.querySelectorAll('dt'));
+      const dtElements = Array.from(document.querySelectorAll("dt"));
       for (const dt of dtElements) {
         if (dt.textContent?.trim() === labelText) {
           const dd = dt.nextElementSibling as HTMLElement;
-          if (dd && dd.tagName === 'DD') {
-            const link = dd.querySelector('a');
-            return link ? link.textContent?.trim() || "" : dd.textContent?.trim() || "";
+          if (dd && dd.tagName === "DD") {
+            const link = dd.querySelector("a");
+            return link
+              ? link.textContent?.trim() || ""
+              : dd.textContent?.trim() || "";
           }
         }
       }
 
       // フォールバック: 全要素検索
-      const elements = Array.from(document.querySelectorAll('*'));
+      const elements = Array.from(document.querySelectorAll("*"));
       for (const element of elements) {
         if (element.textContent?.trim() === labelText) {
           let nextElement = element.nextElementSibling;
           if (nextElement) {
-            const link = nextElement.querySelector('a');
-            return link ? link.textContent?.trim() || "" : nextElement.textContent?.trim() || "";
+            const link = nextElement.querySelector("a");
+            return link
+              ? link.textContent?.trim() || ""
+              : nextElement.textContent?.trim() || "";
           }
         }
       }
@@ -76,10 +76,13 @@ export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData 
     const authorInfo = getInfoByLabel("著者");
     if (authorInfo) {
       // Split by common separators and clean up
-      const authorNames = authorInfo.split(/[,、・]/).map(name => name.trim()).filter(name => name.length > 0);
+      const authorNames = authorInfo
+        .split(/[,、・]/)
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
       for (const name of authorNames) {
         // Remove common suffixes like (著), (原作), etc.
-        const cleanName = name.replace(/\s*[(（][^)）]*[)）]\s*/g, '').trim();
+        const cleanName = name.replace(/\s*[(（][^)）]*[)）]\s*/g, "").trim();
         if (cleanName && !authors.includes(cleanName)) {
           authors.push(cleanName);
         }
@@ -92,10 +95,10 @@ export function scrapeBookWalkerData(document: Document): BookWalkerScrapedData 
       publisher,
       label,
       publishedAt: parsePublishedAt(publishedAt),
-      url
+      url,
     };
   } catch (error) {
-    console.error('Error scraping BookWalker data:', error);
+    logger.error("Error scraping BookWalker data:", error);
     return null;
   }
 }
