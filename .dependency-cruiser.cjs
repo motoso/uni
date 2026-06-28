@@ -60,12 +60,12 @@ module.exports = {
             name: "products-must-not-import-storage-keys",
             severity: "error",
             comment:
-                "Product family holds data + pure Scrapbox body formatting. Storage reads live in callers (see src/settings), so products must not import the storage-key module.",
+                "Product family holds data + pure Scrapbox body formatting. Storage reads live in callers (see src/settings), so products must not import the storage-key module nor the settings readers (which would reintroduce storage access transitively).",
             from: {
                 path: "^src/(Product|Book|Doujinshi|Film|Asmr|DLsiteProduct)\\.ts$",
             },
             to: {
-                path: ["^src/chromeApi\\.ts$"],
+                path: ["^src/chromeApi\\.ts$", "^src/settings/"],
             },
         },
         {
