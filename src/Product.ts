@@ -1,10 +1,9 @@
 import { Dayjs } from "dayjs";
 import { AcceptedService } from "./constant";
-import browser from "webextension-polyfill";
-import { StorageKeyScrapboxFormats } from "./chromeApi";
 import {
   formatScrapboxBody,
   pageLinks,
+  ScrapboxFormats,
   ScrapboxTemplateVars,
 } from "./domain/scrapboxFormatter";
 import { titleForSearch } from "./domain/titleForSearch";
@@ -45,11 +44,10 @@ abstract class Product {
   abstract get productType(): ProductType;
 
   /**
-   * Scrapboxにページを作る際の本文
+   * Scrapboxにページを作る際の本文。
+   * フォーマットは呼び出し側で storage から読み込んで渡す（browser API 非依存）。
    */
-  async createScrapboxBodyString(): Promise<string> {
-    const result = await browser.storage.sync.get([StorageKeyScrapboxFormats]);
-    const formats = (result.scrapboxFormats as Record<string, string>) || {};
+  createScrapboxBodyString(formats: ScrapboxFormats): string {
     const format = formats[this.productType] || this.defaultScrapboxFormat();
     return this.replacePlaceholders(format);
   }
