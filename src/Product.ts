@@ -7,6 +7,7 @@ import {
   ScrapboxTemplateVars,
 } from "./domain/scrapboxFormatter";
 import { titleForSearch } from "./domain/titleForSearch";
+import { toHalfWidth } from "./domain/halfWidth";
 
 export type ProductType = "book" | "doujinshi" | "film" | "asmr";
 
@@ -32,10 +33,8 @@ abstract class Product {
     publishedAt: Dayjs | null,
   ) {
     this._service = service;
-    // タイトルは全部半角にする
-    this._title = title.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) =>
-      String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-    );
+    // タイトルの全角英数字は半角にする
+    this._title = toHalfWidth(title, /[Ａ-Ｚａ-ｚ０-９]/g);
     this._authors = authors;
     this._url = url;
     this._publishedAt = publishedAt;
