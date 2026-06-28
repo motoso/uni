@@ -1,6 +1,7 @@
 import * as React from "react";
 import Product from "../Product";
 import { scrapboxPageUrl } from "../scrapbox/scrapboxPageUrl";
+import { readScrapboxFormats } from "../settings/scrapboxFormatSettings";
 
 type CreatePageBarProps = {
   product: Product;
@@ -11,7 +12,8 @@ export const createScrapboxPageUrl = async (
   projectName: string,
   product: Product,
 ): Promise<string> => {
-  const body = await product.createScrapboxBodyString();
+  const formats = await readScrapboxFormats();
+  const body = product.createScrapboxBodyString(formats);
   return `${scrapboxPageUrl(projectName, product.title)}?body=${encodeURIComponent(
     body,
   )}`;

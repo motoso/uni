@@ -1,13 +1,13 @@
 import { Dayjs } from "dayjs";
 import { AcceptedService } from "./constant";
-import browser from "webextension-polyfill";
-import { StorageKeyScrapboxFormats } from "./chromeApi";
 import {
   formatScrapboxBody,
   pageLinks,
+  ScrapboxFormats,
   ScrapboxTemplateVars,
 } from "./domain/scrapboxFormatter";
 import { titleForSearch } from "./domain/titleForSearch";
+import { toHalfWidth } from "./domain/halfWidth";
 
 export type ProductType = "book" | "doujinshi" | "film" | "asmr";
 
@@ -33,10 +33,8 @@ abstract class Product {
     publishedAt: Dayjs | null,
   ) {
     this._service = service;
-    // タイトルは全部半角にする
-    this._title = title.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) =>
-      String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-    );
+    // タイトルの全角英数字は半角にする
+    this._title = toHalfWidth(title, /[Ａ-Ｚａ-ｚ０-９]/g);
     this._authors = authors;
     this._url = url;
     this._publishedAt = publishedAt;
@@ -45,11 +43,10 @@ abstract class Product {
   abstract get productType(): ProductType;
 
   /**
-   * Scrapboxにページを作る際の本文
+   * Scrapboxにページを作る際の本文。
+   * フォーマットは呼び出し側で storage から読み込んで渡す（browser API 非依存）。
    */
-  async createScrapboxBodyString(): Promise<string> {
-    const result = await browser.storage.sync.get([StorageKeyScrapboxFormats]);
-    const formats = (result.scrapboxFormats as Record<string, string>) || {};
+  createScrapboxBodyString(formats: ScrapboxFormats): string {
     const format = formats[this.productType] || this.defaultScrapboxFormat();
     return this.replacePlaceholders(format);
   }

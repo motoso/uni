@@ -4,6 +4,7 @@
 
 import type { BookWalkerScrapedData } from "./types";
 import { createScraperLogger } from "./utils/logger";
+import { toHalfWidth } from "../domain/halfWidth";
 
 const logger = createScraperLogger("BookWalker-Scraper");
 
@@ -13,9 +14,7 @@ export function scrapeBookWalkerData(
   const parsePublishedAt = (value: string | null): Date | null => {
     if (!value) return null;
 
-    const normalized = value.replace(/[０-９]/g, (s) =>
-      String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-    );
+    const normalized = toHalfWidth(value, /[０-９]/g);
     const dateMatch = normalized.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (!dateMatch) return null;
 

@@ -57,6 +57,31 @@ module.exports = {
             },
         },
         {
+            name: "products-must-not-import-storage-keys",
+            severity: "error",
+            comment:
+                "Product family holds data + pure Scrapbox body formatting. Storage reads live in callers (see src/settings), so products must not import the storage-key module nor the settings readers (which would reintroduce storage access transitively).",
+            from: {
+                path: "^src/(Product|Book|Doujinshi|Film|Asmr|DLsiteProduct)\\.ts$",
+            },
+            to: {
+                path: ["^src/chromeApi\\.ts$", "^src/settings/"],
+            },
+        },
+        {
+            name: "products-must-not-import-extension-runtime",
+            severity: "error",
+            comment:
+                "Product family must stay browser-free; storage/runtime access belongs to callers.",
+            from: {
+                path: "^src/(Product|Book|Doujinshi|Film|Asmr|DLsiteProduct)\\.ts$",
+            },
+            to: {
+                dependencyTypes: ["npm"],
+                path: ["^webextension-polyfill$"],
+            },
+        },
+        {
             name: "domain-must-stay-browser-free",
             severity: "error",
             comment:

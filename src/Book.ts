@@ -54,7 +54,8 @@ class Book extends Product {
     return `[{service}で読む {url}]
 [[著者]]：{authors}
 [[概要]]：
-${this._label ? `[[レーベル]]：[${this._label}]` : ""}${this._publisher ? `[[出版社]]: [${this._publisher}]` : ""}
+[[レーベル]]：{label}
+[[出版社]]: {publisher}
 [[発行年]]：[{publishedYear}]/{publishedMonth}/{publishedDate}
 `;
   }

@@ -1,11 +1,10 @@
+import { toHalfWidth } from "./halfWidth";
+
 export const titleForSearch = (title: string): string => {
   return (
-    title
-      // 全角英数は全て半角にする。記号もなるべく半角にする
-      // MEMO: 。、はこのように半角にすることはできない
-      .replace(/[Ａ-Ｚａ-ｚ０-９（）！？，＃]/g, (s) =>
-        String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-      )
+    // 全角英数は全て半角にする。記号もなるべく半角にする
+    // MEMO: 。、はこのように半角にすることはできない
+    toHalfWidth(title, /[Ａ-Ｚａ-ｚ０-９（）！？，＃]/g)
       // 数字のカッコは最初に外す
       .replace(/\((\d+)\)/g, " $1 ")
       // 行頭のカッコはラベルとみなして消す (非貪欲)
