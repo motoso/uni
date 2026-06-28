@@ -62,9 +62,7 @@ describe("Film placeholder replacement", () => {
     );
 
     const body = film.createScrapboxBodyString({});
-    // Film.tsのdefaultScrapboxFormatの出力を期待値とする
-    // 注意: defaultScrapboxFormatは {placeholder} ではなく直接 this._director などを使っている
-    // そのため、replacePlaceholdersのテストとは少し意味合いが異なるが、最終出力の確認にはなる
+    // defaultScrapboxFormat も {placeholder} 経由で toTemplateVars を使うようになった
     expect(body).toContain("[[監督]]： [いる監督]");
     expect(body).toContain("[[レーベル]]：[存在するレーベル]");
     expect(body).toContain("[[ID]]：default_id_789");
@@ -73,6 +71,26 @@ describe("Film placeholder replacement", () => {
     );
     expect(body).toContain("俳優A");
     expect(body).toContain(`[[発行年]]：[2023]/1/1`);
+  });
+
+  // 経路一本化後: null の id / label が literal "null" にならず空になる（旧 default のバグ修正）
+  test("default format renders empty (not literal 'null') for null id/label/director", () => {
+    const film = Film.make(
+      mockFilmData.service,
+      mockFilmData.title,
+      mockFilmData.actors,
+      null, // director
+      mockFilmData.url,
+      mockFilmData.publishedAt,
+      null, // label
+      null, // id
+    );
+
+    const body = film.createScrapboxBodyString({});
+    expect(body).not.toContain("null");
+    expect(body).toContain("[[監督]]： \n");
+    expect(body).toContain("[[レーベル]]：\n");
+    expect(body).toContain("[[ID]]：\n");
   });
 
   test("should correctly format year with default format (year with brackets)", () => {

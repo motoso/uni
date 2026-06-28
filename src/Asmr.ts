@@ -73,17 +73,16 @@ class Asmr extends Product {
   }
 
   defaultScrapboxFormat(): string {
-    const draft = `[{service}で読む {url}]
+    return `[{service}で読む {url}]
 [[著者]]：{authors}
 [[概要]]：
-[[サークル名]]：[${this._circleName}]
-[[声優]]：${this._voiceActors ? this._voiceActors.map((o) => `[${o}]`).join(" ") : ""}
-[[シナリオライター]]：${this._writers ? this._writers.map((o) => `[${o}]`).join(" ") : ""}
-[[イラストレーター]]：${this._illustrators ? this._illustrators.map((o) => `[${o}]`).join(" ") : ""}
-[[イベント]]: ${this._eventName ? `[${this._eventName}]` : ""}
+[[サークル名]]：{circleName}
+[[声優]]：{voiceActors}
+[[シナリオライター]]：{writers}
+[[イラストレーター]]：{illustrators}
+[[イベント]]: {eventName}
 [[発行年]]：[{publishedYear}]/{publishedMonth}/{publishedDate}
 `;
-    return draft;
   }
 
   protected toTemplateVars(): ScrapboxTemplateVars {

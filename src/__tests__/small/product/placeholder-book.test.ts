@@ -68,6 +68,25 @@ describe("Book placeholder replacement", () => {
     expect(body).toContain(`[[発行年]]：[2021]/11/30`);
   });
 
+  // 経路一本化後: default format でも null フィールドは接頭辞を残して値だけ空になる
+  // （旧 default の「行ごと省略」から custom 経路と同じ挙動に統一）
+  test("default format keeps label/publisher prefixes empty for null fields", () => {
+    const book = Book.make(
+      mockBookData.service,
+      mockBookData.title,
+      mockBookData.authors,
+      mockBookData.url,
+      null, // publisher
+      null, // label
+      mockBookData.publishedAt,
+    );
+
+    const body = book.createScrapboxBodyString({});
+    expect(body).toContain("[[レーベル]]：\n");
+    expect(body).toContain("[[出版社]]: \n");
+    expect(body).not.toContain("null");
+  });
+
   test("should correctly format year with default format (year with brackets)", () => {
     const book = Book.make(
       mockBookData.service,

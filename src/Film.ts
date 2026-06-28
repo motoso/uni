@@ -57,9 +57,9 @@ class Film extends Product {
     return `[{service}で視聴 {url}]
 [[出演者]]：{authors}
 [[概要]]：
-[[監督]]： ${this._director ? `[${this._director}]` : ""}
-[[レーベル]]：[${this._label}]
-[[ID]]：${this._id}
+[[監督]]： {director}
+[[レーベル]]：{label}
+[[ID]]：{id}
 [[発行年]]：[{publishedYear}]/{publishedMonth}/{publishedDate}
 `;
   }

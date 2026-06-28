@@ -112,6 +112,26 @@ describe("Asmr placeholder replacement", () => {
     expect(bodyPartial).toContain(`[[シナリオライター]]：[作家Y]`);
   });
 
+  // 経路一本化後: null circleName が literal "null" にならず空になる
+  test("default format renders empty (not literal 'null') for null circleName", () => {
+    const asmr = Asmr.make(
+      mockAsmrData.service,
+      mockAsmrData.title,
+      mockAsmrData.authors,
+      mockAsmrData.url,
+      mockAsmrData.publishedAt,
+      null as unknown as string, // circleName null
+      null,
+      null,
+      null,
+      null,
+    );
+
+    const body = asmr.createScrapboxBodyString({});
+    expect(body).toContain("[[サークル名]]：\n");
+    expect(body).not.toContain("null");
+  });
+
   test("should correctly format year with default format (year with brackets)", () => {
     const asmr = Asmr.make(
       mockAsmrData.service,
