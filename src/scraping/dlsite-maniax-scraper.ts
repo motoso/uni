@@ -2,20 +2,12 @@
  * Pure function to scrape DLsite Maniax data from the DOM
  */
 
+import type { DLsiteManiaxScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
+
 export const DLSITE_MANIAX_ASMR_TYPE = "ボイス・ASMR";
 
-export interface DLsiteManiaxScrapedData {
-  title: string;
-  type: string;
-  authors: string[];
-  voiceActors: string[];
-  illustrators: string[];
-  writers: string[];
-  circleName: string;
-  eventName: string | null;
-  publishedAt: Date | null;
-  url: string;
-}
+const logger = createScraperLogger("DLsite-Maniax-Scraper");
 
 export function scrapeDLsiteManiaxData(
   document: Document,
@@ -118,7 +110,7 @@ export function scrapeDLsiteManiaxData(
       url,
     };
   } catch (error) {
-    console.error("Error scraping DLsite Maniax data:", error);
+    logger.error("Error scraping DLsite Maniax data:", error);
     return null;
   }
 }

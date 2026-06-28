@@ -2,15 +2,14 @@
  * Pure function to scrape FC2 Content Market data from the DOM
  */
 
-export interface Fc2ContentMarketScrapedData {
-  title: string;
-  director: string;
-  publishedAt: Date | null;
-  id: string;
-  url: string;
-}
+import type { Fc2ContentMarketScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeFc2ContentMarketData(document: Document): Fc2ContentMarketScrapedData | null {
+const logger = createScraperLogger("FC2-Content-Market-Scraper");
+
+export function scrapeFc2ContentMarketData(
+  document: Document,
+): Fc2ContentMarketScrapedData | null {
   const parsePublishedAt = (value: string): Date | null => {
     if (!value) return null;
 
@@ -20,23 +19,22 @@ export function scrapeFc2ContentMarketData(document: Document): Fc2ContentMarket
 
   try {
     const titleElement = document.querySelector(
-      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > h3"
+      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > h3",
     );
     if (!titleElement) return null;
 
-    const title = titleElement.textContent
-      ?.replace(/【[^】]*】/g, "")
-      .trim() || '';
+    const title =
+      titleElement.textContent?.replace(/【[^】]*】/g, "").trim() || "";
 
-    const url = document.location?.href || '';
+    const url = document.location?.href || "";
 
     const directorElement = document.querySelector(
-      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > ul > li:nth-child(3) > a"
+      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > ul > li:nth-child(3) > a",
     );
     const director = directorElement?.textContent?.trim() || "";
 
     const publishedAtElement = document.querySelector(
-      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > div:nth-child(5) > p"
+      "#top > div.items_article_left > section.items_article_header > div > section > div.items_article_headerInfo > div:nth-child(5) > p",
     );
     const publishedAtStr = publishedAtElement?.textContent?.trim() || "";
     const publishedAt = parsePublishedAt(publishedAtStr);
@@ -52,7 +50,7 @@ export function scrapeFc2ContentMarketData(document: Document): Fc2ContentMarket
       url,
     };
   } catch (error) {
-    console.error('Error scraping FC2 Content Market data:', error);
+    logger.error("Error scraping FC2 Content Market data:", error);
     return null;
   }
 }

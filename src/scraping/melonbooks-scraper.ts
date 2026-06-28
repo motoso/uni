@@ -2,17 +2,14 @@
  * Pure function to scrape Melonbooks data from the DOM
  */
 
-export interface MelonbooksScrapedData {
-  title: string;
-  authors: string[];
-  circleName: string;
-  genre: string[];
-  eventName: string | null;
-  publishedAt: Date | null;
-  url: string;
-}
+import type { MelonbooksScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData | null {
+const logger = createScraperLogger("Melonbooks-Scraper");
+
+export function scrapeMelonbooksData(
+  document: Document,
+): MelonbooksScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
     const dateMatch = value?.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (!dateMatch) return null;
@@ -25,15 +22,15 @@ export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData 
 
   try {
     const titleElement = document.querySelector(
-      "#contents > div.item-page > div.item-header > h1"
+      "#contents > div.item-page > div.item-header > h1",
     );
     if (!titleElement) return null;
 
-    const title = titleElement.textContent?.trim() || '';
-    const url = document.location?.href || '';
+    const title = titleElement.textContent?.trim() || "";
+    const url = document.location?.href || "";
 
     const table = document.querySelector(
-      "#contents > div.item-page table > tbody"
+      "#contents > div.item-page table > tbody",
     );
     if (!table) return null;
 
@@ -50,13 +47,17 @@ export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData 
     };
 
     const circleNameRaw = getElemIfExists("サークル名");
-    const circleName = circleNameRaw?.replace(/\(作品数:\d+\)/, "").trim() || "";
+    const circleName =
+      circleNameRaw?.replace(/\(作品数:\d+\)/, "").trim() || "";
 
     const authorRaw = getElemIfExists("作家名");
-    const author = authorRaw?.replace(/\nお気に入り作家に登録する/i, "").trim() || "";
+    const author =
+      authorRaw?.replace(/\nお気に入り作家に登録する/i, "").trim() || "";
 
     const genreRaw = getElemIfExists("ジャンル");
-    const genre = genreRaw ? genreRaw.split(",").map((item) => item.trim()) : [];
+    const genre = genreRaw
+      ? genreRaw.split(",").map((item) => item.trim())
+      : [];
 
     const eventName = getElemIfExists("イベント");
 
@@ -72,7 +73,7 @@ export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData 
       url,
     };
   } catch (error) {
-    console.error('Error scraping Melonbooks data:', error);
+    logger.error("Error scraping Melonbooks data:", error);
     return null;
   }
 }

@@ -2,18 +2,14 @@
  * Pure function to scrape FANZA Anime data from the DOM
  */
 
-export interface FanzaAnimeScrapedData {
-  title: string;
-  actress: string[];
-  director: string | null;
-  label: string;
-  publishedAt: Date | null;
-  id: string;
-  manufacturerProductNumber: string;
-  url: string;
-}
+import type { FanzaAnimeScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
 
-export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData | null {
+const logger = createScraperLogger("FANZA-Anime-Scraper");
+
+export function scrapeFanzaAnimeData(
+  document: Document,
+): FanzaAnimeScrapedData | null {
   const parsePublishedAt = (value: string): Date | null => {
     const dateMatch = value.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);
     if (!dateMatch) return null;
@@ -25,48 +21,56 @@ export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData 
   };
 
   try {
-    console.log('[FANZA Anime] Starting scraping process...');
-    console.log('[FANZA Anime] Page URL:', document.location?.href);
+    logger.debug("Starting scraping process...");
+    logger.debug("Page URL:", document.location?.href);
 
     // Try multiple title selectors (modern SPA style first, then legacy)
-    let titleElement = document.querySelector("h1.font-semibold") ||
-                       document.querySelector("h1") ||
-                       document.getElementById("title");
+    let titleElement =
+      document.querySelector("h1.font-semibold") ||
+      document.querySelector("h1") ||
+      document.getElementById("title");
 
-    console.log('[FANZA Anime] Title element found:', !!titleElement);
-    console.log('[FANZA Anime] Available h1 elements:', document.querySelectorAll('h1').length);
+    logger.debug("Title element found:", !!titleElement);
+    logger.debug(
+      "Available h1 elements:",
+      document.querySelectorAll("h1").length,
+    );
 
     // Debug: Check document ready state and other potential title elements
-    console.log('[FANZA Anime] Document ready state:', document.readyState);
-    console.log('[FANZA Anime] All headings found:');
-    ['h1', 'h2', 'h3', 'h4'].forEach(tag => {
+    logger.debug("Document ready state:", document.readyState);
+    logger.debug("All headings found:");
+    ["h1", "h2", "h3", "h4"].forEach((tag) => {
       const elements = document.querySelectorAll(tag);
-      console.log(`[FANZA Anime] ${tag}: ${elements.length}`);
+      logger.debug(`${tag}: ${elements.length}`);
       if (elements.length > 0) {
         Array.from(elements).forEach((el, i) => {
-          console.log(`[FANZA Anime] ${tag}[${i}]:`, el.textContent?.trim().substring(0, 50));
+          logger.debug(
+            `${tag}[${i}]:`,
+            el.textContent?.trim().substring(0, 50),
+          );
         });
       }
     });
 
     if (!titleElement) {
-      console.log('[FANZA Anime] No title element found with any selector');
+      logger.debug("No title element found with any selector");
       return null;
     }
 
-    const title = titleElement.textContent?.replace(/【.*】/, "").trim() || '';
-    console.log('[FANZA Anime] Title content:', titleElement.textContent);
-    console.log('[FANZA Anime] Final title:', title);
-    const url = document.location?.href || '';
+    const title = titleElement.textContent?.replace(/【.*】/, "").trim() || "";
+    logger.debug("Title content:", titleElement.textContent);
+    logger.debug("Final title:", title);
+    const url = document.location?.href || "";
 
     if (!title) {
-      console.log('[FANZA Anime] Title is empty after processing');
+      logger.debug("Title is empty after processing");
       return null;
     }
 
     // Try multiple table selectors (modern SPA style first, then legacy)
-    const table = document.querySelector("table.text-xs.shrink") as HTMLTableElement ||
-                  document.querySelector("table.mg-b20") as HTMLTableElement;
+    const table =
+      (document.querySelector("table.text-xs.shrink") as HTMLTableElement) ||
+      (document.querySelector("table.mg-b20") as HTMLTableElement);
 
     if (!table) return null;
 
@@ -76,7 +80,7 @@ export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData 
       return rows.findIndex((row) => {
         const cells = row.cells;
         if (cells.length === 0) return false;
-        const cellText = cells[0]?.textContent?.trim() || '';
+        const cellText = cells[0]?.textContent?.trim() || "";
         return cellText === key || cellText.indexOf(key) === 0;
       });
     };
@@ -90,9 +94,9 @@ export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData 
       }
 
       // Fallback: search for the label text anywhere in the table
-      const allCells = Array.from(table.querySelectorAll('td, th'));
-      const labelCell = allCells.find(cell =>
-        cell.textContent?.trim() === labelText
+      const allCells = Array.from(table.querySelectorAll("td, th"));
+      const labelCell = allCells.find(
+        (cell) => cell.textContent?.trim() === labelText,
       );
 
       if (labelCell) {
@@ -132,7 +136,7 @@ export function scrapeFanzaAnimeData(document: Document): FanzaAnimeScrapedData 
       url,
     };
   } catch (error) {
-    console.error('Error scraping FANZA Anime data:', error);
+    logger.error("Error scraping FANZA Anime data:", error);
     return null;
   }
 }

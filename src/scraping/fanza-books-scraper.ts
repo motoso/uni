@@ -1,10 +1,15 @@
-import { FanzaBooksScrapedData } from './types';
+import type { FanzaBooksScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
+
+const logger = createScraperLogger("FANZA-Books-Scraper");
 
 /**
  * Pure function to scrape FANZA Books data from the DOM
  * This function contains the core scraping logic without any UI dependencies
  */
-export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData | null {
+export function scrapeFanzaBooksData(
+  document: Document,
+): FanzaBooksScrapedData | null {
   const parsePublishedAt = (value: string): Date | null => {
     const dateMatch = value.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (!dateMatch) return null;
@@ -19,7 +24,7 @@ export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData 
   const dlElements = document.querySelectorAll("dl");
 
   if (!dlElements || dlElements.length === 0) {
-    console.error("No dl elements found");
+    logger.error("No dl elements found");
     return null;
   }
 
@@ -64,7 +69,10 @@ export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData 
         result.title = valueText;
         break;
       case "作家":
-        result.authors = valueText.split(",").map((item) => item.trim()).filter(item => item);
+        result.authors = valueText
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item);
         break;
       case "掲載誌・レーベル":
         result.label = valueText;
@@ -79,7 +87,7 @@ export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData 
   });
 
   if (!result.title) {
-    console.error("タイトルが見つかりません");
+    logger.error("タイトルが見つかりません");
     return null;
   }
 

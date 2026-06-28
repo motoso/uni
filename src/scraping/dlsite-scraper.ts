@@ -2,18 +2,10 @@
  * Pure function to scrape DLsite data from the DOM
  */
 
-export interface DLsiteScrapedData {
-  title: string;
-  authors: string[];
-  voiceActors: string[];
-  illustrators: string[];
-  writers: string[];
-  circleName: string | null;
-  eventName: string | null;
-  publishedAt: Date | null;
-  url: string;
-  productType: string;
-}
+import type { DLsiteScrapedData } from "./types";
+import { createScraperLogger } from "./utils/logger";
+
+const logger = createScraperLogger("DLsite-Scraper");
 
 export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
   const parsePublishedAt = (value: string | null): Date | null => {
@@ -30,14 +22,17 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
     const titleElement = document.getElementById("work_name");
     if (!titleElement) return null;
 
-    const title = titleElement.textContent?.trim() || '';
-    const url = document.location?.href || '';
+    const title = titleElement.textContent?.trim() || "";
+    const url = document.location?.href || "";
 
     const table = document.getElementById("work_maker");
     const outlineTable = document.getElementById("work_outline");
 
     // Helper function to get element from table if left header matches
-    const getElemIfExists = (leftHeaderStr: string, sourceTable: HTMLElement | null): string | null => {
+    const getElemIfExists = (
+      leftHeaderStr: string,
+      sourceTable: HTMLElement | null,
+    ): string | null => {
       if (!sourceTable) return null;
 
       const rows = Array.from((sourceTable as HTMLTableElement).rows);
@@ -57,35 +52,46 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
     if (circleNameRaw) {
       // Remove everything after newline, "フォローする", and numbers
       circleName = circleNameRaw
-        .split('\n')[0] // Take first line only
-        .replace(/\s*フォローする.*$/, '') // Remove "フォローする" and everything after
-        .replace(/\s+\d+.*$/, '') // Remove numbers and everything after
+        .split("\n")[0] // Take first line only
+        .replace(/\s*フォローする.*$/, "") // Remove "フォローする" and everything after
+        .replace(/\s+\d+.*$/, "") // Remove numbers and everything after
         .trim();
     }
     const voiceActorInfo = getElemIfExists("声優", table);
     const illustratorInfo = getElemIfExists("イラスト", table);
     const writerInfo = getElemIfExists("シナリオ", table);
-    const publishedAt = parsePublishedAt(getElemIfExists("販売日", outlineTable));
+    const publishedAt = parsePublishedAt(
+      getElemIfExists("販売日", outlineTable),
+    );
     const eventName = getElemIfExists("イベント", outlineTable);
 
     // Parse voice actors
     const voiceActors: string[] = [];
     if (voiceActorInfo) {
-      const actors = voiceActorInfo.split(/[,、・]/).map(name => name.trim()).filter(name => name.length > 0);
+      const actors = voiceActorInfo
+        .split(/[,、・]/)
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
       voiceActors.push(...actors);
     }
 
     // Parse illustrators
     const illustrators: string[] = [];
     if (illustratorInfo) {
-      const artists = illustratorInfo.split(/[,、・]/).map(name => name.trim()).filter(name => name.length > 0);
+      const artists = illustratorInfo
+        .split(/[,、・]/)
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
       illustrators.push(...artists);
     }
 
     // Parse writers
     const writers: string[] = [];
     if (writerInfo) {
-      const scriptWriters = writerInfo.split(/[,、・]/).map(name => name.trim()).filter(name => name.length > 0);
+      const scriptWriters = writerInfo
+        .split(/[,、・]/)
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
       writers.push(...scriptWriters);
     }
 
@@ -108,10 +114,10 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
       eventName,
       publishedAt,
       url,
-      productType
+      productType,
     };
   } catch (error) {
-    console.error('Error scraping DLsite data:', error);
+    logger.error("Error scraping DLsite data:", error);
     return null;
   }
 }
