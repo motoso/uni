@@ -11,6 +11,7 @@ import {
   SearchBibliographyResponseDto,
   SearchResultDto,
 } from "../scrapbox/searchDtos";
+import { waitForScrape } from "./dom/waitForScrape";
 
 /**
  * Content Scriptに必要な処理を集約したクラス
@@ -19,6 +20,15 @@ export abstract class BaseContentScript {
   protected readonly ROOT_ELEM = "uniBarRoot";
   // これらは必ず実装してください
   protected readonly SERVICE: AcceptedService;
+
+  /**
+   * BFF / SPA で本文が後から描画されるサイトは true にする。
+   * true の場合、即時 scrape に失敗しても DOM の変化を監視して再 scrape する。
+   */
+  protected readonly waitForDynamicContent: boolean = false;
+
+  /** 動的描画を待つ場合のタイムアウト（ミリ秒）。 */
+  protected readonly scrapeTimeoutMs: number = 10000;
 
   /**
    * 開いたページから必要な情報をスクレイピングする
@@ -35,12 +45,25 @@ export abstract class BaseContentScript {
   protected abstract createElementForBar(): void;
 
   execute() {
+    // 静的サイトと、本文が即時に存在する一般的なケースはここで完結する。
     const product = this.scrape();
-    if (!product) {
+    if (product) {
+      void this.searchAndRender(product);
       return;
     }
 
-    void this.searchAndRender(product);
+    // 即時 scrape に失敗した場合、動的描画サイトのみ DOM 変化を待って再 scrape する。
+    if (!this.waitForDynamicContent) {
+      return;
+    }
+
+    void waitForScrape(() => this.scrape(), {
+      timeoutMs: this.scrapeTimeoutMs,
+    }).then((delayedProduct) => {
+      if (delayedProduct) {
+        return this.searchAndRender(delayedProduct);
+      }
+    });
   }
 
   protected async searchAndRender(product: Product): Promise<void> {
