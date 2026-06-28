@@ -1,6 +1,7 @@
 import Product, { ProductType } from "./Product";
 import { AcceptedService } from "./constant";
 import { Dayjs } from "dayjs";
+import { pageLink, ScrapboxTemplateVars } from "./domain/scrapboxFormatter";
 
 /**
  * 同人誌
@@ -58,17 +59,12 @@ class Doujinshi extends Product {
 `;
   }
 
-  protected replacePlaceholders(format: string): string {
-    let result = super.replacePlaceholders(format);
-    result = result.replace(
-      /\{circleName\}/g,
-      this._circleName ? `[${this._circleName}]` : "",
-    );
-    result = result.replace(
-      /\{eventName\}/g,
-      this._eventName ? `[${this._eventName}]` : "",
-    );
-    return result;
+  protected toTemplateVars(): ScrapboxTemplateVars {
+    return {
+      ...super.toTemplateVars(),
+      circleName: pageLink(this._circleName),
+      eventName: pageLink(this._eventName),
+    };
   }
 }
 

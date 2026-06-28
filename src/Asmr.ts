@@ -1,6 +1,11 @@
 import Product, { ProductType } from "./Product";
 import { AcceptedService } from "./constant";
 import { Dayjs } from "dayjs";
+import {
+  pageLink,
+  pageLinks,
+  ScrapboxTemplateVars,
+} from "./domain/scrapboxFormatter";
 
 /**
  * 音声作品
@@ -81,31 +86,15 @@ class Asmr extends Product {
     return draft;
   }
 
-  protected replacePlaceholders(format: string): string {
-    let result = super.replacePlaceholders(format);
-    result = result.replace(
-      /\{circleName\}/g,
-      this._circleName ? `[${this._circleName}]` : "",
-    );
-    result = result.replace(
-      /\{eventName\}/g,
-      this._eventName ? `[${this._eventName}]` : "",
-    );
-    result = result.replace(
-      /\{illustrators\}/g,
-      this._illustrators
-        ? this._illustrators.map((i) => `[${i}]`).join(" ")
-        : "",
-    );
-    result = result.replace(
-      /\{voiceActors\}/g,
-      this._voiceActors ? this._voiceActors.map((v) => `[${v}]`).join(" ") : "",
-    );
-    result = result.replace(
-      /\{writers\}/g,
-      this._writers ? this._writers.map((w) => `[${w}]`).join(" ") : "",
-    );
-    return result;
+  protected toTemplateVars(): ScrapboxTemplateVars {
+    return {
+      ...super.toTemplateVars(),
+      circleName: pageLink(this._circleName),
+      eventName: pageLink(this._eventName),
+      illustrators: pageLinks(this._illustrators),
+      voiceActors: pageLinks(this._voiceActors),
+      writers: pageLinks(this._writers),
+    };
   }
 }
 
