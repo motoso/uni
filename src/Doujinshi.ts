@@ -16,7 +16,7 @@ class Doujinshi extends Product {
     title: string,
     authors: string[],
     url: string,
-    publishedAt: Dayjs,
+    publishedAt: Dayjs | null,
     circleName: string,
     eventName: string | null,
   ) {

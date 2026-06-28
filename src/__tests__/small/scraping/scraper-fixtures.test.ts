@@ -64,7 +64,7 @@ describe("scraper fixtures from real product HTML", () => {
       authors: ["鬼束直"],
       label: "TENMA COMICS LO",
       publisher: "茜新社",
-      publishedAt: new Date("2024/01/01"),
+      publishedAt: new Date("2024-01-01"),
     });
   });
 
@@ -158,7 +158,7 @@ describe("scraper fixtures from real product HTML", () => {
       authors: ["むちまろ"],
       publisher: "講談社",
       label: "週刊少年マガジン",
-      publishedAt: "2024/11/15",
+      publishedAt: new Date("2024-11-15"),
       url: "https://bookwalker.jp/defb2e0181-c515-4443-9039-11b07c68a30b/",
     });
   });
@@ -175,7 +175,7 @@ describe("scraper fixtures from real product HTML", () => {
       title: "お兄ちゃんはおしまい! (6) (IDコミックス)",
       authors: ["ねことうふ"],
       publisher: null,
-      publishedAt: "2022/4/27",
+      publishedAt: new Date("2022-04-27"),
       url: "https://www.amazon.co.jp/dp/4758069778/?language=ja_JP",
     });
   });

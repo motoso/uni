@@ -9,11 +9,21 @@ export interface ToranoanaScrapedData {
   genre: string[];
   mainCharacters: string[];
   eventName: string | null;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   url: string;
 }
 
 export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    const dateMatch = value?.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     const titleElement = document.querySelector(".product-detail-desc-title span");
     if (!titleElement) return null;
@@ -69,22 +79,11 @@ export function scrapeToranoanaData(document: Document): ToranoanaScrapedData | 
       : null;
 
     // Try multiple possible keys for published date
-    let publishedAtStr = getElemIfExists("発行日") || getElemIfExists("発売日") || getElemIfExists("頒布日");
-    let publishedAt = null;
-
-    if (publishedAtStr) {
-      // Handle different date formats: YYYY/MM/DD or YYYY-MM-DD
-      const dateMatch = publishedAtStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-      if (dateMatch) {
-        const year = dateMatch[1];
-        const month = dateMatch[2].padStart(2, '0');
-        const day = dateMatch[3].padStart(2, '0');
-        publishedAt = `${year}-${month}-${day}`;
-      } else {
-        // If no date format is found, keep the original string
-        publishedAt = publishedAtStr.trim();
-      }
-    }
+    const publishedAt = parsePublishedAt(
+      getElemIfExists("発行日") ||
+        getElemIfExists("発売日") ||
+        getElemIfExists("頒布日"),
+    );
 
     return {
       title,

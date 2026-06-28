@@ -8,11 +8,21 @@ export interface MelonbooksScrapedData {
   circleName: string;
   genre: string[];
   eventName: string | null;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   url: string;
 }
 
 export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    const dateMatch = value?.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     const titleElement = document.querySelector(
       "#contents > div.item-page > div.item-header > h1"
@@ -50,10 +60,7 @@ export function scrapeMelonbooksData(document: Document): MelonbooksScrapedData 
 
     const eventName = getElemIfExists("イベント");
 
-    const publishedAtRaw = getElemIfExists("発行日");
-    const publishedAt = publishedAtRaw
-      ? publishedAtRaw.replace(/^(\d{4})\/(\d{2})\/(\d{2})/, "$1-$2-$3").trim()
-      : null;
+    const publishedAt = parsePublishedAt(getElemIfExists("発行日"));
 
     return {
       title,

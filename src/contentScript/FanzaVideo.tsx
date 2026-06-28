@@ -43,7 +43,7 @@ class FanzaVideo extends BaseContentScript {
       scrapedData.actress,
       scrapedData.director,
       scrapedData.url,
-      dayjs(scrapedData.publishedAt),
+      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
       scrapedData.label,
       scrapedData.id,
     );

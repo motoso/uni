@@ -40,7 +40,9 @@ class DLsiteManiax extends BaseContentScript {
       return null;
     }
 
-    const publishedAt = dayjs(scrapedData.publishedAt);
+    const publishedAt = scrapedData.publishedAt
+      ? dayjs(scrapedData.publishedAt)
+      : null;
 
     switch (scrapedData.type) {
       case DLSITE_MANIAX_ASMR_TYPE:

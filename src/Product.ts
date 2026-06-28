@@ -24,7 +24,7 @@ abstract class Product {
     title: string,
     authors: string[],
     url: string,
-    publishedAt: Dayjs,
+    publishedAt: Dayjs | null,
   ) {
     this._service = service;
     // タイトルは全部半角にする

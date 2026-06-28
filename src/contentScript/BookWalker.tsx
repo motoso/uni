@@ -46,16 +46,9 @@ class BookWalker extends BaseContentScript {
       return null;
     }
 
-    // Parse publishedAt if available
-    let publishedAt = dayjs();
-    if (scrapedData.publishedAt) {
-      const dateMatch = scrapedData.publishedAt.match(
-        /(\d{4})\/(\d{1,2})\/(\d{1,2})/,
-      );
-      if (dateMatch) {
-        publishedAt = dayjs(dateMatch.slice(1).join("-"));
-      }
-    }
+    const publishedAt = scrapedData.publishedAt
+      ? dayjs(scrapedData.publishedAt)
+      : null;
 
     // background scriptに送る
     return Book.make(

@@ -1,6 +1,6 @@
 import Product, { ProductType } from "./Product";
 import { AcceptedService } from "./constant";
-import { Dayjs } from "dayjs"; // Import Dayjs
+import { Dayjs } from "dayjs";
 
 export default class DLsiteProduct extends Product {
   constructor(
@@ -8,10 +8,9 @@ export default class DLsiteProduct extends Product {
     title: string,
     authors: string[],
     url: string,
-    publishedAt: Dayjs | null = null, // Make publishedAt optional and allow null
+    publishedAt: Dayjs | null = null,
   ) {
-    // Pass null for publishedAt if not provided, Product constructor handles null
-    super(service, title, authors, url, publishedAt as Dayjs);
+    super(service, title, authors, url, publishedAt);
   }
 
   get productType(): ProductType {

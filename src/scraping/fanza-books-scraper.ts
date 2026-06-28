@@ -5,6 +5,16 @@ import { FanzaBooksScrapedData } from './types';
  * This function contains the core scraping logic without any UI dependencies
  */
 export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData | null {
+  const parsePublishedAt = (value: string): Date | null => {
+    const dateMatch = value.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   // 全てのdl要素を取得（2025年11月時点のDOM構造では各フィールドが別々のdlに分かれている）
   const dlElements = document.querySelectorAll("dl");
 
@@ -74,14 +84,12 @@ export function scrapeFanzaBooksData(document: Document): FanzaBooksScrapedData 
   }
 
   const url = document.location.href;
-  const publishedAt = new Date(result.publishedAt);
-
   return {
     title: result.title,
     url,
     authors: result.authors,
     label: result.label,
     publisher: result.publisher,
-    publishedAt,
+    publishedAt: parsePublishedAt(result.publishedAt),
   };
 }

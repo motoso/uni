@@ -11,6 +11,13 @@ export interface SurugayaScrapedData {
 }
 
 export function scrapeSurugayaData(document: Document): SurugayaScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    if (!value) return null;
+
+    const parsedAt = new Date(value);
+    return Number.isNaN(parsedAt.getTime()) ? null : parsedAt;
+  };
+
   try {
     const titleElement = document.querySelector("#item_title");
     if (!titleElement) return null;
@@ -54,7 +61,7 @@ export function scrapeSurugayaData(document: Document): SurugayaScrapedData | nu
       });
     });
 
-    const publishedAt = result.publishedAt ? new Date(result.publishedAt) : null;
+    const publishedAt = parsePublishedAt(result.publishedAt);
 
     return {
       title,

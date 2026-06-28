@@ -10,12 +10,22 @@ export interface DLsiteScrapedData {
   writers: string[];
   circleName: string | null;
   eventName: string | null;
-  publishedAt: string | null;
+  publishedAt: Date | null;
   url: string;
   productType: string;
 }
 
 export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    const dateMatch = value?.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     const titleElement = document.getElementById("work_name");
     if (!titleElement) return null;
@@ -55,7 +65,7 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
     const voiceActorInfo = getElemIfExists("声優", table);
     const illustratorInfo = getElemIfExists("イラスト", table);
     const writerInfo = getElemIfExists("シナリオ", table);
-    const publishedAt = getElemIfExists("販売日", outlineTable);
+    const publishedAt = parsePublishedAt(getElemIfExists("販売日", outlineTable));
     const eventName = getElemIfExists("イベント", outlineTable);
 
     // Parse voice actors

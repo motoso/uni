@@ -13,13 +13,23 @@ export interface DLsiteManiaxScrapedData {
   writers: string[];
   circleName: string;
   eventName: string | null;
-  publishedAt: Date;
+  publishedAt: Date | null;
   url: string;
 }
 
 export function scrapeDLsiteManiaxData(
   document: Document,
 ): DLsiteManiaxScrapedData | null {
+  const parsePublishedAt = (value: string | null): Date | null => {
+    const dateMatch = value?.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (!dateMatch) return null;
+
+    const [, year, month, day] = dateMatch;
+    return new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    );
+  };
+
   try {
     const titleElement = document.getElementById("work_name");
     if (!titleElement) return null;
@@ -92,12 +102,8 @@ export function scrapeDLsiteManiaxData(
 
     const eventName = getElemIfExists("イベント", outlineTable);
 
-    // Parse published date (YYYY年MM月DD日 -> Date)
     const publishedAtStr = getElemIfExists("販売日", outlineTable);
-    const dateMatch = publishedAtStr?.match(/(\d{4})年(\d{2})月(\d{2})日/);
-    const publishedAt = dateMatch
-      ? new Date(dateMatch.slice(1).join("-"))
-      : new Date();
+    const publishedAt = parsePublishedAt(publishedAtStr);
 
     return {
       title,
