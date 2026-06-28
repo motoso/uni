@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "@jest/globals";
+import { parseHTML } from "linkedom";
 import browser from "webextension-polyfill";
 import { BaseContentScript } from "../../../contentScript/BaseContentScript";
 import { AcceptedService } from "../../../constant";
@@ -80,4 +88,77 @@ test("検索エラーを受け取った場合はバーを描画しない", async
   await Promise.resolve();
 
   expect(script.createdBars).toBe(0);
+});
+
+describe("動的描画サイト (waitForDynamicContent)", () => {
+  let originalDocument: unknown;
+
+  // BaseContentScript の動的待ちは default root = document.body を使うため、
+  // linkedom の document を globalThis に差し込む。
+  const setGlobalDocument = (document: Document) => {
+    originalDocument = (globalThis as { document?: Document }).document;
+    (globalThis as { document?: Document }).document = document;
+  };
+
+  afterEach(() => {
+    (globalThis as { document?: unknown }).document = originalDocument;
+  });
+
+  class DynamicScript extends BaseContentScript {
+    protected readonly SERVICE = AcceptedService.fanza;
+    protected readonly waitForDynamicContent = true;
+    protected readonly scrapeTimeoutMs = 50;
+
+    constructor(private readonly doc: Document) {
+      super();
+    }
+
+    protected scrape(): Product | null {
+      return this.doc.querySelector("#ready") ? makeProduct("おそ作") : null;
+    }
+
+    protected createElementForBar(): void {
+      // このテストでは描画前の sendMessage 呼び出しだけを検証する
+    }
+  }
+
+  test("即時scrape失敗後、DOM変化でscrapeが成功したら検索する", async () => {
+    const { document } = parseHTML(
+      "<!DOCTYPE html><html><body></body></html>",
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    new DynamicScript(document as unknown as Document).execute();
+
+    // まだ本文がないので検索していない
+    expect(browser.runtime.sendMessage).not.toHaveBeenCalled();
+
+    const ready = document.createElement("div");
+    ready.id = "ready";
+    document.body.appendChild(ready);
+
+    // observer コールバック -> searchAndRender の sendMessage まで待つ
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
+      action: SearchBibliographyAction,
+      query: "おそ作",
+    });
+  });
+
+  test("DOMが変化してもscrapeが成功しなければ検索しない", async () => {
+    const { document } = parseHTML(
+      "<!DOCTYPE html><html><body></body></html>",
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    new DynamicScript(document as unknown as Document).execute();
+
+    // #ready ではない要素を追加しても scrape は失敗のまま
+    document.body.appendChild(document.createElement("span"));
+    // timeout を超えるまで待ち、observer/timer が後始末されることも確認する
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    expect(browser.runtime.sendMessage).not.toHaveBeenCalled();
+  });
 });

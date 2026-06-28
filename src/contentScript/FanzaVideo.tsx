@@ -9,6 +9,8 @@ import { scrapeFanzaVideoData } from "../scraping/fanza-video-scraper";
 
 class FanzaVideo extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fanzaVideo;
+  // 本文が後から動的に描画されるため、DOMの変化を待って再scrapeする。
+  protected readonly waitForDynamicContent = true;
 
   protected createElementForBar(): void {
     const rootElement = this.createRootElement();
@@ -50,8 +52,5 @@ class FanzaVideo extends BaseContentScript {
   }
 }
 
-// FanzaBooksと同様にDOMの読み込み完了を待つ
-setTimeout(function () {
-  const f = new FanzaVideo();
-  f.execute();
-}, 3000); // 3秒待機
+const f = new FanzaVideo();
+f.execute();

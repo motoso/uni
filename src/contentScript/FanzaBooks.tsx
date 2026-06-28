@@ -11,6 +11,9 @@ import { scrapeFanzaBooksData } from "../scraping/fanza-books-scraper";
  */
 class FanzaBooks extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fanza;
+  // 2023年4月ごろのアップデートでBFFで後から動的に情報を取得するようになったため、
+  // DOMの変化を待って再scrapeする。
+  protected readonly waitForDynamicContent = true;
 
   /**
    * バー表示用のdiv要素を生成
@@ -47,10 +50,5 @@ class FanzaBooks extends BaseContentScript {
   }
 }
 
-// 2023年4月ごろのアップデートでBFFで後から動的に情報を取得するようになった
-// これに対応するためにはMutationObserverを使い、対象のDOMが更新されたのかをwatchする必要がある
-// そんなコードを書くのは面倒なので1秒まつ
-setTimeout(function () {
-  const f = new FanzaBooks();
-  f.execute();
-}, 3000); // 2000ミリ秒（2秒）待機する
+const f = new FanzaBooks();
+f.execute();
