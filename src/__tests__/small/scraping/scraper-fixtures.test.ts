@@ -179,4 +179,49 @@ describe("scraper fixtures from real product HTML", () => {
       url: "https://www.amazon.co.jp/dp/4758069778/?language=ja_JP",
     });
   });
+
+  test("does not use speculative Amazon title fallback selectors", () => {
+    const document = documentFromRealHtml(
+      `
+        <html>
+          <body>
+            <h1>Generic page heading</h1>
+            <div id="detailBullets_feature_div">
+              <li><span>出版社 : Example Publisher</span></li>
+              <li><span>発売日 : 2024/1/2</span></li>
+            </div>
+          </body>
+        </html>
+      `,
+      "https://www.amazon.co.jp/dp/example",
+    );
+
+    expect(scrapeAmazonData(document)).toBeNull();
+  });
+
+  test("does not use speculative Amazon author fallback selectors", () => {
+    const document = documentFromRealHtml(
+      `
+        <html>
+          <body>
+            <span id="productTitle">Example Book</span>
+            <div id="bylineInfo"><a href="/author/example">Example Author</a></div>
+            <div id="detailBullets_feature_div">
+              <li><span>出版社 : Example Publisher</span></li>
+              <li><span>発売日 : 2024/1/2</span></li>
+            </div>
+          </body>
+        </html>
+      `,
+      "https://www.amazon.co.jp/dp/example",
+    );
+
+    expect(scrapeAmazonData(document)).toEqual({
+      title: "Example Book",
+      authors: [],
+      publisher: "Example Publisher",
+      publishedAt: new Date("2024-01-02"),
+      url: "https://www.amazon.co.jp/dp/example",
+    });
+  });
 });
