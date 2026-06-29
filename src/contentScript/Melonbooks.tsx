@@ -11,16 +11,7 @@ import { scrapeMelonbooksData } from "../scraping/melonbooks-scraper";
  */
 class Melonbooks extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.melonbooks;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    // サイトの適当な要素につける
-    const header = document.querySelector("#header_free_html");
-    this.mountRootElement(header);
-  }
+  protected readonly rootElementMountPoint = { target: "#header_free_html" };
 
   /**
    * 必要な情報をスクレイピングする

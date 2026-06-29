@@ -9,14 +9,10 @@ import { scrapeFc2ContentMarketData } from "../scraping/fc2-content-market-scrap
 
 class FC2ContentMarket extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fc2ContentMarket;
-
-  protected createElementForBar(): void {
-    // ヘッダー直後に要素を配置する
-    const header = document.querySelector("header");
-
-    // より安全なinsertAdjacentElementを使用
-    this.mountRootElement(header, "afterend");
-  }
+  protected readonly rootElementMountPoint = {
+    target: "header",
+    position: "afterend" as const,
+  };
 
   protected scrape(): Film {
     const scrapedData = scrapeFc2ContentMarketData(document);

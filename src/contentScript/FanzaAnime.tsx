@@ -11,14 +11,10 @@ class FanzaAnime extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fanzaAnime;
   // SPAで本文が後から描画されるため、DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
-
-  protected createElementForBar(): void {
-    // ヘッダー直後に要素を配置する
-    const header = document.querySelector("header");
-
-    // より安全なinsertAdjacentElementを使用
-    this.mountRootElement(header, "afterend");
-  }
+  protected readonly rootElementMountPoint = {
+    target: "header",
+    position: "afterend" as const,
+  };
 
   protected scrape(): Film | null {
     const scrapedData = scrapeFanzaAnimeData(document);

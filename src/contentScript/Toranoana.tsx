@@ -12,16 +12,7 @@ import { scrapeToranoanaData } from "../scraping/toranoana-scraper";
  */
 class Toranoana extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.toranoana;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    // サイトの適当な要素につける
-    const header = document.querySelector("header");
-    this.mountRootElement(header);
-  }
+  protected readonly rootElementMountPoint = { target: "header" };
 
   /**
    * 必要な情報をスクレイピングする

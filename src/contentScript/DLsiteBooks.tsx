@@ -12,15 +12,7 @@ import { scrapeDLsiteBooksData } from "../scraping/dlsite-books-scraper";
  */
 class DLsiteBooks extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.dlsite;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    const header = document.getElementById("header");
-    this.mountRootElement(header);
-  }
+  protected readonly rootElementMountPoint = { target: "#header" };
 
   /**
    * 必要な情報をスクレイピングする

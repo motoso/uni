@@ -14,15 +14,10 @@ class FanzaBooks extends BaseContentScript {
   // 2023年4月ごろのアップデートでBFFで後から動的に情報を取得するようになったため、
   // DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    const header = document.querySelector("header");
-    this.mountRootElement(header, "afterend");
-  }
+  protected readonly rootElementMountPoint = {
+    target: "header",
+    position: "afterend" as const,
+  };
 
   /**
    * Fanzaのページから必要な情報をスクレイピングする

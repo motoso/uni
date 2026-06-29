@@ -14,6 +14,12 @@ import {
 import { waitForScrape } from "./dom/waitForScrape";
 
 type RootElementMountPosition = "append" | "prepend" | "afterend";
+type RootElementMountPoint = {
+  target: string | (() => Element | null);
+  position?: RootElementMountPosition;
+  fallback?: "bodyStart";
+  prepareTarget?: (target: Element) => void;
+};
 
 /**
  * Content Scriptに必要な処理を集約したクラス
@@ -32,6 +38,8 @@ export abstract class BaseContentScript {
   /** 動的描画を待つ場合のタイムアウト（ミリ秒）。 */
   protected readonly scrapeTimeoutMs: number = 10000;
 
+  protected readonly rootElementMountPoint?: RootElementMountPoint;
+
   /**
    * 開いたページから必要な情報をスクレイピングする
    * サービスのHTMLに依存する
@@ -39,12 +47,13 @@ export abstract class BaseContentScript {
    */
   protected abstract scrape(): Product | null;
 
-  /**
-   * 開いたページの上部のいい感じの要素を開発ツールで調べて指定する
-   * サービスのHTMLに依存する
-   * @protected
-   */
-  protected abstract createElementForBar(): void;
+  protected createElementForBar(): void {
+    if (!this.rootElementMountPoint) {
+      throw new Error("rootElementMountPoint is not configured");
+    }
+
+    this.mountRootElementAt(this.rootElementMountPoint);
+  }
 
   execute() {
     // 静的サイトと、本文が即時に存在する一般的なケースはここで完結する。
@@ -188,5 +197,25 @@ export abstract class BaseContentScript {
 
   protected mountRootElementAtBodyStart(): HTMLDivElement {
     return this.mountRootElement(document.body, "prepend");
+  }
+
+  protected mountRootElementAt(
+    mountPoint: RootElementMountPoint,
+  ): HTMLDivElement {
+    const target =
+      typeof mountPoint.target === "string"
+        ? document.querySelector(mountPoint.target)
+        : mountPoint.target();
+
+    if (target) {
+      mountPoint.prepareTarget?.(target);
+      return this.mountRootElement(target, mountPoint.position);
+    }
+
+    if (mountPoint.fallback === "bodyStart") {
+      return this.mountRootElementAtBodyStart();
+    }
+
+    throw new Error("root element mount target was not found");
   }
 }

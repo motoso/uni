@@ -11,15 +11,7 @@ import { scrapeAmazonData } from "../scraping/amazon-scraper";
  */
 class Amazon extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.amazon;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    const header = document.getElementById("navbar");
-    this.mountRootElement(header);
-  }
+  protected readonly rootElementMountPoint = { target: "#navbar" };
 
   /**
    * 必要な情報をスクレイピングする

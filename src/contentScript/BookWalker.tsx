@@ -12,26 +12,13 @@ import { scrapeBookWalkerData } from "../scraping/bookwalker-scraper";
  */
 class BookWalker extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.bookWalker;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    // 複数の候補を試す
-    let targetElement =
+  protected readonly rootElementMountPoint = {
+    target: () =>
       document.getElementsByClassName("header")[0] ||
       document.querySelector("header") ||
-      document.querySelector("nav") ||
-      document.body;
-
-    if (targetElement === document.body) {
-      // bodyの最初の子要素として挿入
-      this.mountRootElementAtBodyStart();
-    } else {
-      this.mountRootElement(targetElement);
-    }
-  }
+      document.querySelector("nav"),
+    fallback: "bodyStart" as const,
+  };
 
   /**
    * 必要な情報をスクレイピングする

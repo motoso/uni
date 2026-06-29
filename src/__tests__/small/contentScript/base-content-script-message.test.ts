@@ -55,6 +55,22 @@ class MountTestContentScript extends BaseContentScript {
   }
 }
 
+class DeclarativeMountTestContentScript extends BaseContentScript {
+  protected readonly SERVICE = AcceptedService.fanza;
+  protected readonly rootElementMountPoint = {
+    target: "#header",
+    position: "afterend" as const,
+  };
+
+  protected scrape(): Product | null {
+    return null;
+  }
+
+  public mountFromConfig(): void {
+    this.createElementForBar();
+  }
+}
+
 const makeProduct = (title: string): Product => {
   return Doujinshi.make(
     AcceptedService.fanza,
@@ -165,6 +181,18 @@ describe("root element mounting", () => {
 
     expect(root.id).toBe("uniBarRoot");
     expect(document.body.firstElementChild).toBe(root);
+  });
+
+  test("rootElementMountPointの設定でuni bar rootを追加する", () => {
+    const { document } = parseHTML(
+      '<!DOCTYPE html><html><body><header id="header"></header><main></main></body></html>',
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    new DeclarativeMountTestContentScript().mountFromConfig();
+
+    const header = document.getElementById("header");
+    expect(header.nextElementSibling?.id).toBe("uniBarRoot");
   });
 });
 

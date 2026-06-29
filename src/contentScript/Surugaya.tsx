@@ -15,17 +15,9 @@ import { scrapeSurugayaData } from "../scraping/surugaya-scraper";
  */
 class Surugaya extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.surugaya;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    const header = document.querySelector(
-      "body > div.dialog-off-canvas-main-canvas > header > div.top_nav",
-    );
-    this.mountRootElement(header);
-  }
+  protected readonly rootElementMountPoint = {
+    target: "body > div.dialog-off-canvas-main-canvas > header > div.top_nav",
+  };
 
   /**
    * ページから必要な情報をスクレイピングする

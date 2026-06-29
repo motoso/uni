@@ -314,11 +314,12 @@ CI強化:
 
 - `waitForScrape` / `waitForElement` を `src/contentScript/dom/waitForScrape.ts` に追加し、BFF / SPA で本文が後から描画されるサイトを `waitForDynamicContent` 経由に統一。
 - バー描画用 root element の作成・挿入を `BaseContentScript.mountRootElement()` / `mountRootElementAtBodyStart()` に集約し、詳細ページ系 content script の `createElementForBar()` から重複する `div#uniBarRoot` 作成を撤去。
+- 詳細ページ系 content script の mount selector / position / fallback / prepare 処理を `rootElementMountPoint` の宣言的設定へ寄せ、単純な `createElementForBar()` override を撤去。
 
 作業:
 
 1. 詳細ページ系を `{ service, scrape, createProduct, mountPoint }` の宣言的設定に寄せる。
-2. `createElementForBar()` のサイト固有 selector を mountPoint 定義へ寄せる。
+2. `scrape()` 内の `ScrapedData -> Product` 変換を createProduct 定義へ寄せる。
 3. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。
 
 注意:
