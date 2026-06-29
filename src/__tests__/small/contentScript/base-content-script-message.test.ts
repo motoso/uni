@@ -31,6 +31,30 @@ class TestContentScript extends BaseContentScript {
   }
 }
 
+class MountTestContentScript extends BaseContentScript {
+  protected readonly SERVICE = AcceptedService.fanza;
+
+  protected scrape(): Product | null {
+    return null;
+  }
+
+  protected createElementForBar(): void {
+    // root element mount helper の単体検証用
+  }
+
+  public mountAppend(target: Element): HTMLDivElement {
+    return this.mountRootElement(target);
+  }
+
+  public mountAfterEnd(target: Element): HTMLDivElement {
+    return this.mountRootElement(target, "afterend");
+  }
+
+  public mountAtBodyStart(): HTMLDivElement {
+    return this.mountRootElementAtBodyStart();
+  }
+}
+
 const makeProduct = (title: string): Product => {
   return Doujinshi.make(
     AcceptedService.fanza,
@@ -88,6 +112,60 @@ test("検索エラーを受け取った場合はバーを描画しない", async
   await Promise.resolve();
 
   expect(script.createdBars).toBe(0);
+});
+
+describe("root element mounting", () => {
+  let originalDocument: unknown;
+
+  beforeEach(() => {
+    originalDocument = (globalThis as { document?: Document }).document;
+  });
+
+  afterEach(() => {
+    (globalThis as { document?: unknown }).document = originalDocument;
+  });
+
+  const setGlobalDocument = (document: Document) => {
+    (globalThis as { document?: Document }).document = document;
+  };
+
+  test("指定した要素の末尾にuni bar rootを追加する", () => {
+    const { document } = parseHTML(
+      '<!DOCTYPE html><html><body><header id="header"></header></body></html>',
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    const header = document.getElementById("header");
+    const root = new MountTestContentScript().mountAppend(header);
+
+    expect(root.id).toBe("uniBarRoot");
+    expect(header.lastElementChild).toBe(root);
+  });
+
+  test("指定した要素の直後にuni bar rootを追加する", () => {
+    const { document } = parseHTML(
+      '<!DOCTYPE html><html><body><header id="header"></header><main></main></body></html>',
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    const header = document.getElementById("header");
+    const root = new MountTestContentScript().mountAfterEnd(header);
+
+    expect(root.id).toBe("uniBarRoot");
+    expect(header.nextElementSibling).toBe(root);
+  });
+
+  test("bodyの先頭にuni bar rootを追加する", () => {
+    const { document } = parseHTML(
+      '<!DOCTYPE html><html><body><main id="first"></main></body></html>',
+    );
+    setGlobalDocument(document as unknown as Document);
+
+    const root = new MountTestContentScript().mountAtBodyStart();
+
+    expect(root.id).toBe("uniBarRoot");
+    expect(document.body.firstElementChild).toBe(root);
+  });
 });
 
 describe("動的描画サイト (waitForDynamicContent)", () => {

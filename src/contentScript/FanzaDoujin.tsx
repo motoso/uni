@@ -17,22 +17,15 @@ class FanzaDoujin extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const rootElement = this.createRootElement();
-
     // サイトの適当な要素につける
     const header = document.getElementsByTagName("header")[0];
     if (header) {
       // appendした子要素も高さに含んでほしい
       header.style.height = "auto";
-      header.appendChild(rootElement);
+      this.mountRootElement(header);
     } else {
       // headerがない場合はbodyの最初に追加
-      const body = document.body;
-      if (body && body.firstChild) {
-        body.insertBefore(rootElement, body.firstChild);
-      } else if (body) {
-        body.appendChild(rootElement);
-      }
+      this.mountRootElementAtBodyStart();
     }
   }
 

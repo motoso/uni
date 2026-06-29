@@ -13,22 +13,15 @@ class FanzaVideo extends BaseContentScript {
   protected readonly waitForDynamicContent = true;
 
   protected createElementForBar(): void {
-    const rootElement = this.createRootElement();
-
     // ヘッダー直後に要素を配置する（www.dmm.co.jpの場合）
     const header = document.querySelector("header");
 
     if (header) {
       // より安全なinsertAdjacentElementを使用
-      header.insertAdjacentElement("afterend", rootElement);
+      this.mountRootElement(header, "afterend");
     } else {
       // headerが存在しない場合（video.dmm.co.jpなど）はbody直後に配置
-      const body = document.querySelector("body");
-      if (body && body.firstChild) {
-        body.insertBefore(rootElement, body.firstChild);
-      } else if (body) {
-        body.appendChild(rootElement);
-      }
+      this.mountRootElementAtBodyStart();
     }
   }
 

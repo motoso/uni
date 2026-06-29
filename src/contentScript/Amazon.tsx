@@ -17,10 +17,8 @@ class Amazon extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const rootElement = this.createRootElement();
-
     const header = document.getElementById("navbar");
-    header.appendChild(rootElement);
+    this.mountRootElement(header);
   }
 
   /**

@@ -21,12 +21,10 @@ class Surugaya extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const textarea = document.createElement("div");
-    textarea.id = this.ROOT_ELEM;
     const header = document.querySelector(
       "body > div.dialog-off-canvas-main-canvas > header > div.top_nav",
     );
-    header.appendChild(textarea);
+    this.mountRootElement(header);
   }
 
   /**

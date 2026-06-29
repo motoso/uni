@@ -23,10 +23,8 @@ class DLsiteManiax extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const divElement = document.createElement("div");
-    divElement.id = this.ROOT_ELEM;
     const header = document.getElementById("header");
-    header.appendChild(divElement);
+    this.mountRootElement(header);
   }
 
   /**

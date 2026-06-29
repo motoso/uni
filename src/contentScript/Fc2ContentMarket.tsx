@@ -11,13 +11,11 @@ class FC2ContentMarket extends BaseContentScript {
   protected readonly SERVICE = AcceptedService.fc2ContentMarket;
 
   protected createElementForBar(): void {
-    const rootElement = this.createRootElement();
-
     // ヘッダー直後に要素を配置する
     const header = document.querySelector("header");
 
     // より安全なinsertAdjacentElementを使用
-    header.insertAdjacentElement("afterend", rootElement);
+    this.mountRootElement(header, "afterend");
   }
 
   protected scrape(): Film {

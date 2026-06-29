@@ -18,12 +18,9 @@ class Toranoana extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    // 表示用のエレメント作成
-    const divElementForBar = document.createElement("div");
-    divElementForBar.id = this.ROOT_ELEM;
     // サイトの適当な要素につける
     const header = document.querySelector("header");
-    header.appendChild(divElementForBar);
+    this.mountRootElement(header);
   }
 
   /**

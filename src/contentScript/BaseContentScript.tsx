@@ -13,6 +13,8 @@ import {
 } from "../scrapbox/searchDtos";
 import { waitForScrape } from "./dom/waitForScrape";
 
+type RootElementMountPosition = "append" | "prepend" | "afterend";
+
 /**
  * Content Scriptに必要な処理を集約したクラス
  */
@@ -162,5 +164,29 @@ export abstract class BaseContentScript {
     const divElement = document.createElement("div");
     divElement.id = this.ROOT_ELEM;
     return divElement;
+  }
+
+  protected mountRootElement(
+    target: Element,
+    position: RootElementMountPosition = "append",
+  ): HTMLDivElement {
+    const rootElement = this.createRootElement();
+
+    switch (position) {
+      case "prepend":
+        target.insertBefore(rootElement, target.firstChild);
+        break;
+      case "afterend":
+        target.insertAdjacentElement("afterend", rootElement);
+        break;
+      default:
+        target.appendChild(rootElement);
+    }
+
+    return rootElement;
+  }
+
+  protected mountRootElementAtBodyStart(): HTMLDivElement {
+    return this.mountRootElement(document.body, "prepend");
   }
 }

@@ -20,10 +20,8 @@ class FanzaBooks extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const textarea = document.createElement("div");
-    textarea.id = this.ROOT_ELEM;
     const header = document.querySelector("header");
-    header.parentNode.insertBefore(textarea, header.nextSibling);
+    this.mountRootElement(header, "afterend");
   }
 
   /**

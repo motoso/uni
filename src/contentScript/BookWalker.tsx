@@ -18,8 +18,6 @@ class BookWalker extends BaseContentScript {
    * @private
    */
   protected createElementForBar() {
-    const rootElement = this.createRootElement();
-
     // 複数の候補を試す
     let targetElement =
       document.getElementsByClassName("header")[0] ||
@@ -29,9 +27,9 @@ class BookWalker extends BaseContentScript {
 
     if (targetElement === document.body) {
       // bodyの最初の子要素として挿入
-      document.body.insertBefore(rootElement, document.body.firstChild);
+      this.mountRootElementAtBodyStart();
     } else {
-      targetElement.appendChild(rootElement);
+      this.mountRootElement(targetElement);
     }
   }
 

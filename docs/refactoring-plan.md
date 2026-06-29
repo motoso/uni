@@ -1,12 +1,12 @@
 # uni リファクタリング計画（Phase 1 完了後）
 
-> 更新: 2026-06-28 / 最新 `main` (`b481243`, `refactor: unify scraper publishedAt contract (#26)`) を基準に更新。
+> 更新: 2026-06-30 / 最新 `main` (`712885d`, `refactor: unify content script DOM waiting (Phase 4 PR-A) (#31)`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
-> Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。次の作業対象は Phase 4。
+> Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。Phase 4（Content Script 共通化）は着手済み。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -154,7 +154,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 は完了済みとして扱う。次の作業対象は Phase 4。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 は完了済みとして扱う。現在の作業対象は Phase 4。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -310,10 +310,15 @@ CI強化:
 
 - 各サイトのエントリを薄くし、DOM待ちとバー描画の重複を減らす。
 
+着手済み:
+
+- `waitForScrape` / `waitForElement` を `src/contentScript/dom/waitForScrape.ts` に追加し、BFF / SPA で本文が後から描画されるサイトを `waitForDynamicContent` 経由に統一。
+- バー描画用 root element の作成・挿入を `BaseContentScript.mountRootElement()` / `mountRootElementAtBodyStart()` に集約し、詳細ページ系 content script の `createElementForBar()` から重複する `div#uniBarRoot` 作成を撤去。
+
 作業:
 
-1. `waitForElement` / `waitForSelector` を共通化。
-2. 詳細ページ系を `{ service, scrape, createProduct, mountPoint }` の宣言的設定に寄せる。
+1. 詳細ページ系を `{ service, scrape, createProduct, mountPoint }` の宣言的設定に寄せる。
+2. `createElementForBar()` のサイト固有 selector を mountPoint 定義へ寄せる。
 3. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。
 
 注意:
