@@ -1,40 +1,33 @@
 // CSSを有効にする
 import "../organism/Bar.scss";
 
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
 import Film from "../Film";
 import { scrapeFanzaAnimeData } from "../scraping/fanza-anime-scraper";
+import { FanzaAnimeScrapedData } from "../scraping/types";
 
-class FanzaAnime extends BaseContentScript {
+class FanzaAnime extends DetailContentScript<FanzaAnimeScrapedData> {
   protected readonly SERVICE = AcceptedService.fanzaAnime;
   // SPAで本文が後から描画されるため、DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
+  protected readonly rootElementMountPoint = {
+    target: "header",
+    position: "afterend" as const,
+  };
 
-  protected createElementForBar(): void {
-    const rootElement = this.createRootElement();
-
-    // ヘッダー直後に要素を配置する
-    const header = document.querySelector("header");
-
-    // より安全なinsertAdjacentElementを使用
-    header.insertAdjacentElement("afterend", rootElement);
+  protected scrapeData(): FanzaAnimeScrapedData | null {
+    return scrapeFanzaAnimeData(document);
   }
 
-  protected scrape(): Film | null {
-    const scrapedData = scrapeFanzaAnimeData(document);
-    if (!scrapedData) {
-      return null;
-    }
-
+  protected createProduct(scrapedData: FanzaAnimeScrapedData): Film {
     return Film.make(
       AcceptedService.fanzaAnime,
       scrapedData.title,
       scrapedData.actress,
       scrapedData.director,
       scrapedData.url,
-      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
+      this.publishedAt(scrapedData.publishedAt),
       scrapedData.label,
       scrapedData.manufacturerProductNumber,
     );

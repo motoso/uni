@@ -2,54 +2,29 @@ import Book from "../Book";
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { scrapeBookWalkerData } from "../scraping/bookwalker-scraper";
+import { BookWalkerScrapedData } from "../scraping/types";
 
 /**
  * Bookwalkerのページを開いたときに実行される
  * https://bookwalker.jp/dea73feaf6-9f21-4c46-ac85-991153a0b71b/
  */
-class BookWalker extends BaseContentScript {
+class BookWalker extends DetailContentScript<BookWalkerScrapedData> {
   protected readonly SERVICE = AcceptedService.bookWalker;
-
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    const rootElement = this.createRootElement();
-
-    // 複数の候補を試す
-    let targetElement =
+  protected readonly rootElementMountPoint = {
+    target: () =>
       document.getElementsByClassName("header")[0] ||
       document.querySelector("header") ||
-      document.querySelector("nav") ||
-      document.body;
+      document.querySelector("nav"),
+    fallback: "bodyStart" as const,
+  };
 
-    if (targetElement === document.body) {
-      // bodyの最初の子要素として挿入
-      document.body.insertBefore(rootElement, document.body.firstChild);
-    } else {
-      targetElement.appendChild(rootElement);
-    }
+  protected scrapeData(): BookWalkerScrapedData | null {
+    return scrapeBookWalkerData(document);
   }
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Book {
-    const scrapedData = scrapeBookWalkerData(document);
-
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: BookWalkerScrapedData): Book {
     // background scriptに送る
     return Book.make(
       this.SERVICE,
@@ -58,7 +33,7 @@ class BookWalker extends BaseContentScript {
       scrapedData.url,
       scrapedData.publisher,
       scrapedData.label,
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
     );
   }
 

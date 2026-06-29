@@ -1,52 +1,30 @@
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import Doujinshi from "../Doujinshi";
 import { scrapeMelonbooksData } from "../scraping/melonbooks-scraper";
+import { MelonbooksScrapedData } from "../scraping/types";
 
 /**
  * メロンブックスのページを開いたときに実行される
  */
-class Melonbooks extends BaseContentScript {
+class Melonbooks extends DetailContentScript<MelonbooksScrapedData> {
   protected readonly SERVICE = AcceptedService.melonbooks;
+  protected readonly rootElementMountPoint = { target: "#header_free_html" };
 
-  /**
-   * バー表示用のdiv要素を生成
-   * @private
-   */
-  protected createElementForBar() {
-    // 表示用のエレメント作成
-    const divElementForBar = document.createElement("div");
-    divElementForBar.id = this.ROOT_ELEM;
-    // サイトの適当な要素につける
-    const header = document.querySelector("#header_free_html");
-    header.appendChild(divElementForBar);
+  protected scrapeData(): MelonbooksScrapedData | null {
+    return scrapeMelonbooksData(document);
   }
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Doujinshi {
-    const scrapedData = scrapeMelonbooksData(document);
-
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: MelonbooksScrapedData): Doujinshi {
     // background scriptに送る
     return Doujinshi.make(
       AcceptedService.melonbooks,
       scrapedData.title,
       scrapedData.authors,
       scrapedData.url,
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
       scrapedData.circleName,
       scrapedData.eventName,
     );

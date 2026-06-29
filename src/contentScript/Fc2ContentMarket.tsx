@@ -1,32 +1,24 @@
 // CSSを有効にする
 import "../organism/Bar.scss";
 
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
 import Film from "../Film";
 import { scrapeFc2ContentMarketData } from "../scraping/fc2-content-market-scraper";
+import { Fc2ContentMarketScrapedData } from "../scraping/types";
 
-class FC2ContentMarket extends BaseContentScript {
+class FC2ContentMarket extends DetailContentScript<Fc2ContentMarketScrapedData> {
   protected readonly SERVICE = AcceptedService.fc2ContentMarket;
+  protected readonly rootElementMountPoint = {
+    target: "header",
+    position: "afterend" as const,
+  };
 
-  protected createElementForBar(): void {
-    const rootElement = this.createRootElement();
-
-    // ヘッダー直後に要素を配置する
-    const header = document.querySelector("header");
-
-    // より安全なinsertAdjacentElementを使用
-    header.insertAdjacentElement("afterend", rootElement);
+  protected scrapeData(): Fc2ContentMarketScrapedData | null {
+    return scrapeFc2ContentMarketData(document);
   }
 
-  protected scrape(): Film {
-    const scrapedData = scrapeFc2ContentMarketData(document);
-
-    if (!scrapedData) {
-      return null;
-    }
-
+  protected createProduct(scrapedData: Fc2ContentMarketScrapedData): Film {
     // background scriptに送る
     return Film.make(
       this.SERVICE,
@@ -34,7 +26,7 @@ class FC2ContentMarket extends BaseContentScript {
       [], // actress
       scrapedData.director === "" ? null : scrapedData.director,
       scrapedData.url,
-      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
+      this.publishedAt(scrapedData.publishedAt),
       "", // label
       scrapedData.id,
     );
