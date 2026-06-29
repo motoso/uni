@@ -316,11 +316,12 @@ CI強化:
 - バー描画用 root element の作成・挿入を `BaseContentScript.mountRootElement()` / `mountRootElementAtBodyStart()` に集約し、詳細ページ系 content script の `createElementForBar()` から重複する `div#uniBarRoot` 作成を撤去。
 - 詳細ページ系 content script の mount selector / position / fallback / prepare 処理を `rootElementMountPoint` の宣言的設定へ寄せ、単純な `createElementForBar()` override を撤去。
 - 詳細ページ系 content script を `DetailContentScript<TScrapedData>` に寄せ、`scrapeData()` と `createProduct()` を分離。`publishedAt` の dayjs 変換も基底側に集約。
+- 一覧ページ系（DMMBasket / DLsiteCart）の Scrapbox リンク表示と `ScrapboxPageDto -> 表示リンク` mapping を `cartScrapboxLinks.tsx` に集約。
 
 作業:
 
 1. 詳細ページ系を `{ service, scrapeData, createProduct, mountPoint }` の宣言的設定に寄せる。（完了）
-2. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。
+2. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。（着手中）
 
 注意:
 

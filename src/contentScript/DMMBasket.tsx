@@ -3,58 +3,11 @@ import { createRoot } from "react-dom/client";
 import ScrapboxApiClient from "../scrapbox/scrapboxApi";
 import Doujinshi from "../Doujinshi";
 import { AcceptedService } from "../constant";
-import Product from "../Product"; // Needed for createScrapboxPageUrl type
-import { createScrapboxPageUrl } from "../organism/CreatePageBar"; // For the "create page" link
 import { StorageKeyProjectName } from "../chromeApi";
-import { ScrapboxPageDto } from "../scrapbox/searchDtos";
-
-// Define the new component for displaying Scrapbox links
-type ScrapboxLinksDisplayProps = {
-  existPages: { name: string; url: string }[];
-  product: Product; // Using base Product type
-  projectName: string;
-};
-
-const ScrapboxLinksDisplay: React.FC<ScrapboxLinksDisplayProps> = ({
-  existPages,
-  product,
-  projectName,
-}) => {
-  const pageCreationUrl = createScrapboxPageUrl(projectName, product);
-
-  return (
-    <div
-      style={{
-        marginTop: "8px",
-        fontSize: "12px",
-        padding: "5px",
-        border: "1px solid #ffcdd2",
-        backgroundColor: "#ffebee",
-      }}
-    >
-      <strong style={{ color: "#c62828" }}>もう買ってるかも:</strong>
-      {existPages.map((page) => (
-        <a
-          key={page.url}
-          href={page.url}
-          target="_blank"
-          style={{
-            marginLeft: "8px",
-            color: "#007bff",
-            textDecoration: "underline",
-          }}
-        >
-          {page.name}
-        </a>
-      ))}
-      {/* Remove create page link per user request */}
-      {/* <br />
-      <a href={pageCreationUrl} target="_blank" style={{ marginTop: '4px', display: 'inline-block', color: '#28a745', textDecoration: 'underline' }}>
-        「{product.title}」のページを作成
-      </a> */}
-    </div>
-  );
-};
+import {
+  CartScrapboxLinksDisplay,
+  toCartScrapboxLinks,
+} from "./cartScrapboxLinks";
 
 const DMMBasketChecker = () => {
   const [projectName, setProjectName] = React.useState<string | null>(null);
@@ -161,18 +114,9 @@ const DMMBasketChecker = () => {
             }
 
             const root = createRoot(linksContainer);
-            const existPages = searchResult.pages.map((p: ScrapboxPageDto) => ({
-              name: p.title,
-              url: p.pageUrl,
-            }));
+            const existPages = toCartScrapboxLinks(searchResult.pages);
 
-            root.render(
-              <ScrapboxLinksDisplay
-                existPages={existPages}
-                product={product}
-                projectName={currentProjectName}
-              />,
-            );
+            root.render(<CartScrapboxLinksDisplay existPages={existPages} />);
           } else {
             console.log(`[DMM Basket Checker] Not found in Scrapbox: ${title}`);
           }

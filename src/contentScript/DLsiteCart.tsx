@@ -3,55 +3,11 @@ import { createRoot } from "react-dom/client";
 import ScrapboxApiClient from "../scrapbox/scrapboxApi";
 import DLsiteProduct from "../DLsiteProduct"; // Changed import
 import { AcceptedService } from "../constant";
-import { createScrapboxPageUrl } from "../organism/CreatePageBar";
 import { StorageKeyProjectName } from "../chromeApi";
-import { ScrapboxPageDto } from "../scrapbox/searchDtos";
-
-type ScrapboxLinksDisplayProps = {
-  existPages: { name: string; url: string }[];
-  product: DLsiteProduct;
-  projectName: string;
-};
-
-const ScrapboxLinksDisplay: React.FC<ScrapboxLinksDisplayProps> = ({
-  existPages,
-  product,
-  projectName,
-}) => {
-  const pageCreationUrl = createScrapboxPageUrl(projectName, product);
-
-  return (
-    <div
-      style={{
-        marginTop: "8px",
-        fontSize: "12px",
-        padding: "5px",
-        border: "1px solid #ffcdd2",
-        backgroundColor: "#ffebee",
-      }}
-    >
-      <strong style={{ color: "#c62828" }}>もう買ってるかも:</strong>
-      {existPages.map((page) => (
-        <a
-          key={page.url}
-          href={page.url}
-          target="_blank"
-          style={{
-            marginLeft: "8px",
-            color: "#007bff",
-            textDecoration: "underline",
-          }}
-        >
-          {page.name}
-        </a>
-      ))}
-      {/* <br />
-      <a href={pageCreationUrl} target="_blank" style={{ marginTop: '4px', display: 'inline-block', color: '#28a745', textDecoration: 'underline' }}>
-        「{product.title}」のページを作成
-      </a> */}
-    </div>
-  );
-};
+import {
+  CartScrapboxLinksDisplay,
+  toCartScrapboxLinks,
+} from "./cartScrapboxLinks";
 
 const DLsiteCartChecker = () => {
   const [projectName, setProjectName] = React.useState<string | null>(null);
@@ -138,18 +94,9 @@ const DLsiteCartChecker = () => {
             }
 
             const root = createRoot(linksContainer);
-            const existPages = searchResult.pages.map((p: ScrapboxPageDto) => ({
-              name: p.title,
-              url: p.pageUrl,
-            }));
+            const existPages = toCartScrapboxLinks(searchResult.pages);
 
-            root.render(
-              <ScrapboxLinksDisplay
-                existPages={existPages}
-                product={product}
-                projectName={currentProjectName}
-              />,
-            );
+            root.render(<CartScrapboxLinksDisplay existPages={existPages} />);
           } else {
             console.log(
               `[DLsite Cart Checker] Not found in Scrapbox: ${title}`,
