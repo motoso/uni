@@ -9,6 +9,7 @@ import {
 import { parseHTML } from "linkedom";
 import browser from "webextension-polyfill";
 import { BaseContentScript } from "../../../contentScript/BaseContentScript";
+import { DetailContentScript } from "../../../contentScript/DetailContentScript";
 import { AcceptedService } from "../../../constant";
 import Doujinshi from "../../../Doujinshi";
 import Product from "../../../Product";
@@ -71,6 +72,23 @@ class DeclarativeMountTestContentScript extends BaseContentScript {
   }
 }
 
+class DetailTestContentScript extends DetailContentScript<{ title: string }> {
+  protected readonly SERVICE = AcceptedService.fanza;
+  protected readonly rootElementMountPoint = { target: "body" };
+
+  constructor(private readonly scrapedData: { title: string } | null) {
+    super();
+  }
+
+  protected scrapeData(): { title: string } | null {
+    return this.scrapedData;
+  }
+
+  protected createProduct(scrapedData: { title: string }): Product {
+    return makeProduct(scrapedData.title);
+  }
+}
+
 const makeProduct = (title: string): Product => {
   return Doujinshi.make(
     AcceptedService.fanza,
@@ -128,6 +146,15 @@ test("検索エラーを受け取った場合はバーを描画しない", async
   await Promise.resolve();
 
   expect(script.createdBars).toBe(0);
+});
+
+test("DetailContentScriptはscraped dataからProductを作って検索する", () => {
+  new DetailTestContentScript({ title: "詳細ページ(2)" }).execute();
+
+  expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
+    action: SearchBibliographyAction,
+    query: "詳細ページ 2",
+  });
 });
 
 describe("root element mounting", () => {

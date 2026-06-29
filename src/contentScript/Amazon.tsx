@@ -2,32 +2,22 @@ import Book from "../Book";
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { scrapeAmazonData } from "../scraping/amazon-scraper";
+import { AmazonScrapedData } from "../scraping/types";
 
 /**
  * Amazonのページを開いたときに実行される
  */
-class Amazon extends BaseContentScript {
+class Amazon extends DetailContentScript<AmazonScrapedData> {
   protected readonly SERVICE = AcceptedService.amazon;
   protected readonly rootElementMountPoint = { target: "#navbar" };
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Book {
-    const scrapedData = scrapeAmazonData(document);
+  protected scrapeData(): AmazonScrapedData | null {
+    return scrapeAmazonData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: AmazonScrapedData): Book {
     // background scriptに送る
     return Book.make(
       this.SERVICE,
@@ -36,7 +26,7 @@ class Amazon extends BaseContentScript {
       scrapedData.url,
       scrapedData.publisher,
       null, // label
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
     );
   }
 }

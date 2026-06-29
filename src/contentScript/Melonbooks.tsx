@@ -1,40 +1,30 @@
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import Doujinshi from "../Doujinshi";
 import { scrapeMelonbooksData } from "../scraping/melonbooks-scraper";
+import { MelonbooksScrapedData } from "../scraping/types";
 
 /**
  * メロンブックスのページを開いたときに実行される
  */
-class Melonbooks extends BaseContentScript {
+class Melonbooks extends DetailContentScript<MelonbooksScrapedData> {
   protected readonly SERVICE = AcceptedService.melonbooks;
   protected readonly rootElementMountPoint = { target: "#header_free_html" };
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Doujinshi {
-    const scrapedData = scrapeMelonbooksData(document);
+  protected scrapeData(): MelonbooksScrapedData | null {
+    return scrapeMelonbooksData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: MelonbooksScrapedData): Doujinshi {
     // background scriptに送る
     return Doujinshi.make(
       AcceptedService.melonbooks,
       scrapedData.title,
       scrapedData.authors,
       scrapedData.url,
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
       scrapedData.circleName,
       scrapedData.eventName,
     );

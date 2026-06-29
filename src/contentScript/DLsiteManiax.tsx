@@ -1,8 +1,7 @@
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import Doujinshi from "../Doujinshi";
 import Asmr from "../Asmr";
 import Product from "../Product";
@@ -10,30 +9,21 @@ import {
   DLSITE_MANIAX_ASMR_TYPE,
   scrapeDLsiteManiaxData,
 } from "../scraping/dlsite-maniax-scraper";
+import { DLsiteManiaxScrapedData } from "../scraping/types";
 
 /**
  * DLSite maniaxやがるまに
  * を開いたときに実行される
  */
-class DLsiteManiax extends BaseContentScript {
+class DLsiteManiax extends DetailContentScript<DLsiteManiaxScrapedData> {
   protected readonly SERVICE = AcceptedService.dlsiteManiax;
   protected readonly rootElementMountPoint = { target: "#header" };
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Product {
-    const scrapedData = scrapeDLsiteManiaxData(document);
+  protected scrapeData(): DLsiteManiaxScrapedData | null {
+    return scrapeDLsiteManiaxData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: DLsiteManiaxScrapedData): Product {
     switch (scrapedData.type) {
       case DLSITE_MANIAX_ASMR_TYPE:
         return Asmr.make(
@@ -41,7 +31,7 @@ class DLsiteManiax extends BaseContentScript {
           scrapedData.title,
           scrapedData.authors,
           scrapedData.url,
-          publishedAt,
+          this.publishedAt(scrapedData.publishedAt),
           scrapedData.circleName,
           scrapedData.eventName,
           scrapedData.illustrators,
@@ -55,7 +45,7 @@ class DLsiteManiax extends BaseContentScript {
           scrapedData.title,
           scrapedData.authors,
           scrapedData.url,
-          publishedAt,
+          this.publishedAt(scrapedData.publishedAt),
           scrapedData.circleName,
           scrapedData.eventName,
         );

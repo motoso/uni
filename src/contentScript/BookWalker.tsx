@@ -2,15 +2,15 @@ import Book from "../Book";
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { scrapeBookWalkerData } from "../scraping/bookwalker-scraper";
+import { BookWalkerScrapedData } from "../scraping/types";
 
 /**
  * Bookwalkerのページを開いたときに実行される
  * https://bookwalker.jp/dea73feaf6-9f21-4c46-ac85-991153a0b71b/
  */
-class BookWalker extends BaseContentScript {
+class BookWalker extends DetailContentScript<BookWalkerScrapedData> {
   protected readonly SERVICE = AcceptedService.bookWalker;
   protected readonly rootElementMountPoint = {
     target: () =>
@@ -20,21 +20,11 @@ class BookWalker extends BaseContentScript {
     fallback: "bodyStart" as const,
   };
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Book {
-    const scrapedData = scrapeBookWalkerData(document);
+  protected scrapeData(): BookWalkerScrapedData | null {
+    return scrapeBookWalkerData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: BookWalkerScrapedData): Book {
     // background scriptに送る
     return Book.make(
       this.SERVICE,
@@ -43,7 +33,7 @@ class BookWalker extends BaseContentScript {
       scrapedData.url,
       scrapedData.publisher,
       scrapedData.label,
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
     );
   }
 

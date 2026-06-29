@@ -1,41 +1,31 @@
 import * as React from "react";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import Doujinshi from "../Doujinshi";
 import { scrapeToranoanaData } from "../scraping/toranoana-scraper";
+import { ToranoanaScrapedData } from "../scraping/types";
 
 /**
  * とらのあなのページを開いたときに実行される
  * https://ec.toranoana.jp/tora_r/ec/item/
  */
-class Toranoana extends BaseContentScript {
+class Toranoana extends DetailContentScript<ToranoanaScrapedData> {
   protected readonly SERVICE = AcceptedService.toranoana;
   protected readonly rootElementMountPoint = { target: "header" };
 
-  /**
-   * 必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Doujinshi {
-    const scrapedData = scrapeToranoanaData(document);
+  protected scrapeData(): ToranoanaScrapedData | null {
+    return scrapeToranoanaData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
-    const publishedAt = scrapedData.publishedAt
-      ? dayjs(scrapedData.publishedAt)
-      : null;
-
+  protected createProduct(scrapedData: ToranoanaScrapedData): Doujinshi {
     // background scriptに送る
     return Doujinshi.make(
       AcceptedService.toranoana,
       scrapedData.title,
       scrapedData.authors,
       scrapedData.url,
-      publishedAt,
+      this.publishedAt(scrapedData.publishedAt),
       scrapedData.circleName,
       scrapedData.eventName || "",
     );

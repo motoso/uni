@@ -1,13 +1,13 @@
 // CSSを有効にする
 import "../organism/Bar.scss";
 
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
 import Film from "../Film";
 import { scrapeFanzaVideoData } from "../scraping/fanza-video-scraper";
+import { FanzaVideoScrapedData } from "../scraping/types";
 
-class FanzaVideo extends BaseContentScript {
+class FanzaVideo extends DetailContentScript<FanzaVideoScrapedData> {
   protected readonly SERVICE = AcceptedService.fanzaVideo;
   // 本文が後から動的に描画されるため、DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
@@ -17,12 +17,11 @@ class FanzaVideo extends BaseContentScript {
     fallback: "bodyStart" as const,
   };
 
-  protected scrape(): Film {
-    const scrapedData = scrapeFanzaVideoData(document);
+  protected scrapeData(): FanzaVideoScrapedData | null {
+    return scrapeFanzaVideoData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
+  protected createProduct(scrapedData: FanzaVideoScrapedData): Film {
     // background scriptに送る
     return Film.make(
       AcceptedService.fanzaVideo,
@@ -30,7 +29,7 @@ class FanzaVideo extends BaseContentScript {
       scrapedData.actress,
       scrapedData.director,
       scrapedData.url,
-      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
+      this.publishedAt(scrapedData.publishedAt),
       scrapedData.label,
       scrapedData.id,
     );

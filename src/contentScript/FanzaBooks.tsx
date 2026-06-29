@@ -1,15 +1,15 @@
 import Book from "../Book";
 import "../organism/Bar.scss";
 import { AcceptedService } from "../constant";
-import dayjs from "dayjs";
-import { BaseContentScript } from "./BaseContentScript";
+import { DetailContentScript } from "./DetailContentScript";
 import { scrapeFanzaBooksData } from "../scraping/fanza-books-scraper";
+import { FanzaBooksScrapedData } from "../scraping/types";
 
 /**
  * FANZAのページを開いたときに実行される
  * https://book.dmm.co.jp/detail/*
  */
-class FanzaBooks extends BaseContentScript {
+class FanzaBooks extends DetailContentScript<FanzaBooksScrapedData> {
   protected readonly SERVICE = AcceptedService.fanza;
   // 2023年4月ごろのアップデートでBFFで後から動的に情報を取得するようになったため、
   // DOMの変化を待って再scrapeする。
@@ -19,17 +19,11 @@ class FanzaBooks extends BaseContentScript {
     position: "afterend" as const,
   };
 
-  /**
-   * Fanzaのページから必要な情報をスクレイピングする
-   * @private
-   */
-  protected scrape(): Book {
-    const scrapedData = scrapeFanzaBooksData(document);
+  protected scrapeData(): FanzaBooksScrapedData | null {
+    return scrapeFanzaBooksData(document);
+  }
 
-    if (!scrapedData) {
-      return null;
-    }
-
+  protected createProduct(scrapedData: FanzaBooksScrapedData): Book {
     // background scriptに送る
     return Book.make(
       AcceptedService.fanza,
@@ -38,7 +32,7 @@ class FanzaBooks extends BaseContentScript {
       scrapedData.url,
       scrapedData.publisher,
       scrapedData.label,
-      scrapedData.publishedAt ? dayjs(scrapedData.publishedAt) : null,
+      this.publishedAt(scrapedData.publishedAt),
     );
   }
 }
