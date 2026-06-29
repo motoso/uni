@@ -6,7 +6,8 @@
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
-> Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。Phase 4（Content Script 共通化）は着手済み。
+> Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
+> Phase 4（Content Script 共通化）は完了。次の作業対象は Phase 5。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -154,7 +155,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 は完了済みとして扱う。現在の作業対象は Phase 4。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 は完了済みとして扱う。次の作業対象は Phase 5。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -304,7 +305,7 @@ CI強化:
 - `src/domain` 作成後、`domain-must-stay-browser-free` が実効ルールになる。
 - `Product.ts` が `browser` を import しなくなったため、root `Product` 系に `products-must-not-import-storage-keys`（`chromeApi.ts` と `src/settings/` 禁止。settings 経由で storage 読込を間接的に復活させないため）と `products-must-not-import-extension-runtime`（`webextension-polyfill` 禁止）を追加済み。
 
-### Phase 4 — Content Script共通化
+### Phase 4 — Content Script共通化（完了）
 
 目的:
 
@@ -317,11 +318,12 @@ CI強化:
 - 詳細ページ系 content script の mount selector / position / fallback / prepare 処理を `rootElementMountPoint` の宣言的設定へ寄せ、単純な `createElementForBar()` override を撤去。
 - 詳細ページ系 content script を `DetailContentScript<TScrapedData>` に寄せ、`scrapeData()` と `createProduct()` を分離。`publishedAt` の dayjs 変換も基底側に集約。
 - 一覧ページ系（DMMBasket / DLsiteCart）の Scrapbox リンク表示と `ScrapboxPageDto -> 表示リンク` mapping を `cartScrapboxLinks.tsx` に集約。
+- 一覧ページ系（DMMBasket / DLsiteCart）の storage 読込、polling、MutationObserver、per-item 検索、リンク container 描画を `CartScrapboxChecker.tsx` に集約し、各 entry はサイト固有 selector / Product factory / container 挿入位置だけを定義する形に整理。
 
 作業:
 
 1. 詳細ページ系を `{ service, scrapeData, createProduct, mountPoint }` の宣言的設定に寄せる。（完了）
-2. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。（着手中）
+2. 一覧ページ系（DMMBasket / DLsiteCart）の observer + per-item 検索 + リンク注入を共通化する。（完了）
 
 注意:
 
