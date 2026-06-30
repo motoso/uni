@@ -5,6 +5,7 @@ This file provides guidance to Codex when working with code in this repository.
 ## Commands
 
 ```bash
+mise install                   # Install pinned Node.js and npm
 npm install                    # Install dependencies
 npm run build                  # Production build
 npm run dev                    # Development build
