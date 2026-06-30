@@ -12,6 +12,15 @@ manifest.jsonとpackage.jsonを更新した上でリリースのPRを作り、ma
 - 実サイトで見つけたスクレイピング不具合は、可能ならDocument/Element fixtureのSmallテストに還元してから修正すること
 - 外部サーバーとのテストを確認する際には、時間節約のため失敗したものに限って実行すること
 - PR作成時にGitHub Actions上のClaude Code自動レビューは走りません。必要なレビューは `subagent-consultation` スキルを使って依頼し、criticalな指摘があれば修正してpushすること。
+
+# PR作成・マージの手順
+- PR作成とマージは `gh` を使う。GitHub connector は branch push 後でも `Resource not accessible by integration` でPR作成に失敗することがある。
+- Codex sandbox内では、ネットワーク制限により `gh auth status` や `gh repo view` が認証エラー・DNSエラーのように見えることがある。認証不良と判断する前に、実際に必要な `gh` コマンドを権限昇格付きで再実行する。
+- commit/push後は、PR本文を `/private/tmp` にMarkdownで書き出してから次の流れで進める：
+  1. `gh pr create --repo motoso/uni --base main --head <branch> --title "<title>" --body-file /private/tmp/<body>.md`
+  2. `gh pr view <number> --repo motoso/uni --json number,state,mergeable,isDraft,headRefOid,url`
+  3. `gh pr checks <number> --repo motoso/uni`
+  4. CIが通ったら `gh pr merge <number> --repo motoso/uni --merge --delete-branch`
 # HTML要素が変わってスクレイピングに失敗する場合
 対象サイトのHTMLをplaywright等で確認し、適切な情報が取れるようにscrapingロジックを書き直してください
 セレクターは想像で書かずに、実際のHTMLを見て確認すること。またfallbackは設定しないこと（なくなったら実際のサイトに接続するテストが落ちるのが理想）

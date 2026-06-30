@@ -49,3 +49,14 @@ Follow [TEST_STRATEGY.md](TEST_STRATEGY.md) and [docs/adr/001-test-strategy-and-
 ## Pull Requests
 
 Before opening or updating a PR, run `npm run fmt` and `npm test`. Run targeted Large tests only when the change touches scraping, selectors, age verification, or site-specific ContentScripts.
+
+When creating and merging PRs from Codex:
+
+- Use `gh` as the reliable path for PR creation and merge. The GitHub connector may fail to create PRs with `Resource not accessible by integration` even after the branch has been pushed.
+- In the Codex sandbox, non-escalated `gh` commands that call the GitHub API can fail with DNS errors or misleading auth errors. Retry the actual API command with network escalation before concluding authentication is broken.
+- Prefer this flow after committing and pushing:
+  1. Create a Markdown body file under `/private/tmp`.
+  2. Run `gh pr create --repo motoso/uni --base main --head <branch> --title "<title>" --body-file /private/tmp/<body>.md`.
+  3. Confirm state with `gh pr view <number> --repo motoso/uni --json number,state,mergeable,isDraft,headRefOid,url`.
+  4. Check CI with `gh pr checks <number> --repo motoso/uni`.
+  5. Merge with `gh pr merge <number> --repo motoso/uni --merge --delete-branch` only after checks pass, or when the user explicitly says to ignore a known failing check.
