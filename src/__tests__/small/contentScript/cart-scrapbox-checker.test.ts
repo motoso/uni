@@ -91,8 +91,9 @@ describe("CartScrapboxChecker", () => {
       document as unknown as Document;
     (globalThis as { window?: Window }).window = window as unknown as Window;
     (globalThis as { Node?: typeof Node }).Node = window.Node;
-    (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver =
-      window.MutationObserver;
+    (
+      globalThis as { MutationObserver?: typeof MutationObserver }
+    ).MutationObserver = window.MutationObserver;
     return document;
   };
 
@@ -133,6 +134,14 @@ describe("CartScrapboxChecker", () => {
 
     mountChecker();
     await waitUntil(() => sendMessageMock().mock.calls.length > 0);
+    await waitUntil(() => {
+      const linksContainer = document.querySelector(
+        ".scrapbox-links-container",
+      );
+      return (
+        linksContainer?.textContent?.includes("もう買ってるかも:") ?? false
+      );
+    });
 
     expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
       action: SearchBibliographyAction,
