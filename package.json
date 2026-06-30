@@ -72,10 +72,5 @@
     "ky": "1.14.2",
     "react": "19.2.0",
     "react-dom": "19.2.0"
-  },
-  "packageManager": "npm@11.6.4",
-  "volta": {
-    "node": "24.11.1",
-    "npm": "11.6.4"
   }
 }

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: volta-cli/action@v4
+      - uses: jdx/mise-action@v4
       - run: npm ci
       - name: Prettier check (fail on diff)
         run: npx prettier --check **/*.{ts,tsx,scss}
