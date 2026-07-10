@@ -24,7 +24,7 @@ export function AlertBar(props: AlertBarProps) {
   return (
     <div className="bar alert">
       <div className="message">もう買ってるかも</div>
-      <div className="link">
+      <div className="link existingPages">
         {/* TODO: ボタンにする?*/}
         {existPages.map((page) => (
           <a href={page.url} key={page.url} target="_blank">
@@ -32,7 +32,7 @@ export function AlertBar(props: AlertBarProps) {
           </a>
         ))}
       </div>
-      <div className="link">
+      <div className="link createPageLink">
         <a href="#" onClick={handleClick}>
           {product.title} のページを作る
         </a>
