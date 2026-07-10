@@ -57,6 +57,36 @@ module.exports = {
             },
         },
         {
+            name: "sites-must-stay-framework-independent",
+            severity: "error",
+            comment:
+                "Site definitions may compose scrapers and product factories, but must not depend on extension runtime or presentation code.",
+            from: {
+                path: "^src/sites/",
+            },
+            to: {
+                path: [
+                    "^src/(chromeApi|eventPage)\\.ts$",
+                    "^src/contentScript/",
+                    "^src/organism/",
+                    "^src/popup/",
+                ],
+            },
+        },
+        {
+            name: "sites-must-not-import-ui-or-extension-packages",
+            severity: "error",
+            comment:
+                "Framework-independent site definitions must remain free of UI and browser-extension runtime packages.",
+            from: {
+                path: "^src/sites/",
+            },
+            to: {
+                dependencyTypes: ["npm"],
+                path: ["^react$", "^react-dom", "^webextension-polyfill$"],
+            },
+        },
+        {
             name: "products-must-not-import-storage-keys",
             severity: "error",
             comment:

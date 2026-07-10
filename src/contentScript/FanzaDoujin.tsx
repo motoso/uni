@@ -1,16 +1,13 @@
-import * as React from "react";
 import "../organism/Bar.scss";
-import { AcceptedService } from "../constant";
 import { DetailContentScript } from "./DetailContentScript";
-import Doujinshi from "../Doujinshi";
-import { scrapeFanzaDoujinData } from "../scraping/fanza-doujin-scraper";
 import { FanzaDoujinScrapedData } from "../scraping/types";
+import { fanzaDoujinSite } from "../sites/fanzaDoujin";
 
 /**
  * FANZAのページを開いたときに実行される
  */
 class FanzaDoujin extends DetailContentScript<FanzaDoujinScrapedData> {
-  protected readonly SERVICE = AcceptedService.fanzaDojin;
+  protected readonly SERVICE = fanzaDoujinSite.service;
   protected readonly rootElementMountPoint = {
     target: () => document.getElementsByTagName("header")[0] ?? null,
     prepareTarget: (target: Element) => {
@@ -21,20 +18,11 @@ class FanzaDoujin extends DetailContentScript<FanzaDoujinScrapedData> {
   };
 
   protected scrapeData(): FanzaDoujinScrapedData | null {
-    return scrapeFanzaDoujinData(document);
+    return fanzaDoujinSite.scraper(document);
   }
 
-  protected createProduct(scrapedData: FanzaDoujinScrapedData): Doujinshi {
-    // background scriptに送る
-    return Doujinshi.make(
-      AcceptedService.fanzaDojin,
-      scrapedData.title,
-      scrapedData.authors,
-      scrapedData.url,
-      this.publishedAt(scrapedData.publishedAt),
-      scrapedData.circleName,
-      null,
-    );
+  protected createProduct(scrapedData: FanzaDoujinScrapedData) {
+    return fanzaDoujinSite.createProduct(scrapedData);
   }
 }
 

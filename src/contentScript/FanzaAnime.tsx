@@ -2,13 +2,11 @@
 import "../organism/Bar.scss";
 
 import { DetailContentScript } from "./DetailContentScript";
-import { AcceptedService } from "../constant";
-import Film from "../Film";
-import { scrapeFanzaAnimeData } from "../scraping/fanza-anime-scraper";
 import { FanzaAnimeScrapedData } from "../scraping/types";
+import { fanzaAnimeSite } from "../sites/fanzaAnime";
 
 class FanzaAnime extends DetailContentScript<FanzaAnimeScrapedData> {
-  protected readonly SERVICE = AcceptedService.fanzaAnime;
+  protected readonly SERVICE = fanzaAnimeSite.service;
   // SPAで本文が後から描画されるため、DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
   protected readonly rootElementMountPoint = {
@@ -17,20 +15,11 @@ class FanzaAnime extends DetailContentScript<FanzaAnimeScrapedData> {
   };
 
   protected scrapeData(): FanzaAnimeScrapedData | null {
-    return scrapeFanzaAnimeData(document);
+    return fanzaAnimeSite.scraper(document);
   }
 
-  protected createProduct(scrapedData: FanzaAnimeScrapedData): Film {
-    return Film.make(
-      AcceptedService.fanzaAnime,
-      scrapedData.title,
-      scrapedData.actress,
-      scrapedData.director,
-      scrapedData.url,
-      this.publishedAt(scrapedData.publishedAt),
-      scrapedData.label,
-      scrapedData.manufacturerProductNumber,
-    );
+  protected createProduct(scrapedData: FanzaAnimeScrapedData) {
+    return fanzaAnimeSite.createProduct(scrapedData);
   }
 }
 

@@ -1,13 +1,13 @@
 # uni リファクタリング計画（Phase 1 完了後）
 
-> 更新: 2026-06-30 / 最新 `main` (`712885d`, `refactor: unify content script DOM waiting (Phase 4 PR-A) (#31)`) を基準に更新。
+> 更新: 2026-07-10 / 最新 `main` (`64f0661`, `Merge pull request #39 from motoso/codex/fix-alert-bar-overflow`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
 > Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
-> Phase 4（Content Script 共通化）は完了。次の作業対象は Phase 5。
+> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。次の作業対象は Phase 7b。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -155,7 +155,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 は完了済みとして扱う。次の作業対象は Phase 5。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 は完了済みとして扱う。次の作業対象は Phase 7b。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -329,7 +329,7 @@ CI強化:
 
 - Phase 7b で entrypoint 規約が変わる可能性があるため、ファイル移動は最小限にする。
 
-### Phase 5 — サイトレジストリ化
+### Phase 5 — サイトレジストリ化（完了）
 
 目的:
 
@@ -348,6 +348,13 @@ Phase 7a の結論に従う:
 - scraper
 - product factory
 - content script entry
+
+実績:
+
+- 詳細商品サイトごとの型付き plain definition を `src/sites` に追加し、上記情報を集約。
+- 各 Content Script は site definition の service / scraper / product factory を利用し、重複していた Product 組み立てを除去。
+- `productSiteRegistry` の ID / entry 一意性と routing / runtime adapter の必須項目を Small test で固定。
+- 商品を持たないカート用 Content Script は product site registry の対象外とし、Phase 7b の entrypoint 移行時に別種の定義として扱う。
 
 ### Phase 7b — ビルド基盤の本移行
 

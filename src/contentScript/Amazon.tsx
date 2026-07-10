@@ -1,33 +1,21 @@
-import Book from "../Book";
-import * as React from "react";
 import "../organism/Bar.scss";
-import { AcceptedService } from "../constant";
 import { DetailContentScript } from "./DetailContentScript";
-import { scrapeAmazonData } from "../scraping/amazon-scraper";
 import { AmazonScrapedData } from "../scraping/types";
+import { amazonSite } from "../sites/amazon";
 
 /**
  * Amazonのページを開いたときに実行される
  */
 class Amazon extends DetailContentScript<AmazonScrapedData> {
-  protected readonly SERVICE = AcceptedService.amazon;
+  protected readonly SERVICE = amazonSite.service;
   protected readonly rootElementMountPoint = { target: "#navbar" };
 
   protected scrapeData(): AmazonScrapedData | null {
-    return scrapeAmazonData(document);
+    return amazonSite.scraper(document);
   }
 
-  protected createProduct(scrapedData: AmazonScrapedData): Book {
-    // background scriptに送る
-    return Book.make(
-      this.SERVICE,
-      scrapedData.title,
-      scrapedData.authors,
-      scrapedData.url,
-      scrapedData.publisher,
-      null, // label
-      this.publishedAt(scrapedData.publishedAt),
-    );
+  protected createProduct(scrapedData: AmazonScrapedData) {
+    return amazonSite.createProduct(scrapedData);
   }
 }
 
