@@ -42,6 +42,20 @@ html {
     // ページを作るボタンが存在するのて、少し高さを確保
     height: 100px;
 
+    .message,
+    .createPageLink {
+        flex: 0 0 auto;
+    }
+
+    // 検索候補が多くても、ページ作成リンクの操作領域を確保する
+    .existingPages {
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        overflow-y: auto;
+        text-align: center;
+    }
+
     .link {
         font-size: 15px;
         a {
