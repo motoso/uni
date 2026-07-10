@@ -131,7 +131,7 @@ export abstract class BaseContentScript {
     // メッセージを表示
     const existPages = result.pages.map((p) => {
       return {
-        name: "/" + projectName + "/" + p.title,
+        name: "/" + p.title,
         url: p.pageUrl,
       };
     });
