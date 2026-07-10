@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import Product from "../Product";
 import { BaseContentScript } from "./BaseContentScript";
 
@@ -16,9 +15,5 @@ export abstract class DetailContentScript<
     }
 
     return this.createProduct(scrapedData);
-  }
-
-  protected publishedAt(date: Date | null): dayjs.Dayjs | null {
-    return date ? dayjs(date) : null;
   }
 }
