@@ -6,7 +6,6 @@ import { FanzaVideoScrapedData } from "../scraping/types";
 import { fanzaVideoSite } from "../sites/fanzaVideo";
 
 class FanzaVideo extends DetailContentScript<FanzaVideoScrapedData> {
-  protected readonly SERVICE = fanzaVideoSite.service;
   // 本文が後から動的に描画されるため、DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;
   protected readonly rootElementMountPoint = {

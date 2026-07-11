@@ -8,7 +8,6 @@ import { fanzaBooksSite } from "../sites/fanzaBooks";
  * https://book.dmm.co.jp/detail/*
  */
 class FanzaBooks extends DetailContentScript<FanzaBooksScrapedData> {
-  protected readonly SERVICE = fanzaBooksSite.service;
   // 2023年4月ごろのアップデートでBFFで後から動的に情報を取得するようになったため、
   // DOMの変化を待って再scrapeする。
   protected readonly waitForDynamicContent = true;

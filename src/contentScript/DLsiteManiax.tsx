@@ -8,7 +8,6 @@ import { dlsiteManiaxSite } from "../sites/dlsiteManiax";
  * を開いたときに実行される
  */
 class DLsiteManiax extends DetailContentScript<DLsiteManiaxScrapedData> {
-  protected readonly SERVICE = dlsiteManiaxSite.service;
   protected readonly rootElementMountPoint = { target: "#header" };
 
   protected scrapeData(): DLsiteManiaxScrapedData | null {
