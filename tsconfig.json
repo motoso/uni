@@ -8,6 +8,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist/js",
+    "resolveJsonModule": true,
     "rootDir": "src",
     "sourceMap": true,
     "target": "es6"

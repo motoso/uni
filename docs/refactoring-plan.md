@@ -7,7 +7,7 @@
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
 > Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
-> Phase 4（Content Script 共通化）は完了。次の作業対象は Phase 5。
+> Phase 4（Content Script 共通化）と Phase 5（サイトレジストリ化）は完了。次の作業対象は Phase 7b。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -155,7 +155,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 は完了済みとして扱う。次の作業対象は Phase 5。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 は完了済みとして扱う。次の作業対象は Phase 7b。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -329,7 +329,7 @@ CI強化:
 
 - Phase 7b で entrypoint 規約が変わる可能性があるため、ファイル移動は最小限にする。
 
-### Phase 5 — サイトレジストリ化
+### Phase 5 — サイトレジストリ化（完了）
 
 目的:
 
@@ -348,6 +348,12 @@ Phase 7a の結論に従う:
 - scraper
 - product factory
 - content script entry
+
+成果:
+
+- `src/sites/registry.ts` に全14エントリの service / host / match pattern / product type / scraper / product factory / content script entry を集約。
+- manifest と registry の content script / match pattern が一致することを Small test で固定。
+- ADR-002 に従い、webpack / manifest / declarativeContent の自前生成は行わない。
 
 ### Phase 7b — ビルド基盤の本移行
 
