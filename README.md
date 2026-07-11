@@ -98,10 +98,10 @@ npm run watch:firefox
 
 ```bash
 # Chrome用ZIPパッケージ作成
-npm run package:chrome    # → dist/uni-2.1.4-chrome.zip
+npm run package:chrome    # → dist/uni-chrome.zip
 
 # Firefox用ZIPパッケージ作成  
-npm run package:firefox   # → dist/uni-2.1.4-firefox.zip
+npm run package:firefox   # → dist/uni-firefox.zip
 
 # 両方同時作成
 npm run package:all

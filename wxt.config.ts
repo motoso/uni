@@ -4,6 +4,9 @@ export default defineConfig({
   srcDir: ".",
   publicDir: "public",
   outDir: "dist",
+  zip: {
+    artifactTemplate: "uni-{{browser}}.zip",
+  },
   manifest: ({ browser }) => ({
     name: "Uni",
     description: "Building your library on the Cosense",
