@@ -1,3 +1,5 @@
+import { registerBackgroundListeners } from "../src/eventPage";
+
 export default defineBackground(() => {
-  void import("../src/eventPage");
+  registerBackgroundListeners();
 });

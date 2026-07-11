@@ -21,3 +21,5 @@ jobs:
         run: npm run dep:check
       - name: Run Small Tests (Fast Unit Tests)
         run: npm run test:small
+      - name: Build Chrome extension
+        run: npm run build:chrome
