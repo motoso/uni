@@ -1,5 +1,4 @@
 import { productSiteRegistry } from "../../../sites/registry";
-import manifest from "../../../manifest.json";
 
 describe("productSiteRegistry", () => {
   it("keeps every product-site id and content-script entry unique", () => {
@@ -45,21 +44,9 @@ describe("productSiteRegistry", () => {
     ]);
   });
 
-  it("stays aligned with manifest product content scripts", () => {
-    const cartEntries = new Set(["DMMBasket", "DLsiteCart"]);
-    const manifestProductRoutes = manifest.content_scripts
-      .map(({ js, matches }) => ({
-        contentScriptEntry: js[0].replace(/^js\//, "").replace(/\.js$/, ""),
-        matches,
-      }))
-      .filter(({ contentScriptEntry }) => !cartEntries.has(contentScriptEntry));
-    const registryProductRoutes = productSiteRegistry.map(
-      ({ contentScriptEntry, matches }) => ({
-        contentScriptEntry,
-        matches: [...matches],
-      }),
-    );
-
-    expect(registryProductRoutes).toEqual(manifestProductRoutes);
+  it("uses entry names that map directly to WXT content entrypoints", () => {
+    for (const { contentScriptEntry } of productSiteRegistry) {
+      expect(contentScriptEntry).toMatch(/^[a-z][A-Za-z0-9]*$/);
+    }
   });
 });
