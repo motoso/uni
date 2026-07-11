@@ -8,7 +8,6 @@ import { toranoanaSite } from "../sites/toranoana";
  * https://ec.toranoana.jp/tora_r/ec/item/
  */
 class Toranoana extends DetailContentScript<ToranoanaScrapedData> {
-  protected readonly SERVICE = toranoanaSite.service;
   protected readonly rootElementMountPoint = { target: "header" };
 
   protected scrapeData(): ToranoanaScrapedData | null {

@@ -7,7 +7,6 @@ import { melonbooksSite } from "../sites/melonbooks";
  * メロンブックスのページを開いたときに実行される
  */
 class Melonbooks extends DetailContentScript<MelonbooksScrapedData> {
-  protected readonly SERVICE = melonbooksSite.service;
   protected readonly rootElementMountPoint = { target: "#header_free_html" };
 
   protected scrapeData(): MelonbooksScrapedData | null {

@@ -11,7 +11,6 @@ import { surugayaSite } from "../sites/surugaya";
  * https://gyazo.com/369f88d61f358ea642d91964e5c682fc
  */
 class Surugaya extends DetailContentScript<SurugayaScrapedData> {
-  protected readonly SERVICE = surugayaSite.service;
   protected readonly rootElementMountPoint = {
     target: "body > div.dialog-off-canvas-main-canvas > header > div.top_nav",
   };

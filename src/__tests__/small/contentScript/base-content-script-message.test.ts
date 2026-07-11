@@ -16,7 +16,6 @@ import Product from "../../../Product";
 import { SearchBibliographyAction } from "../../../scrapbox/searchDtos";
 
 class TestContentScript extends BaseContentScript {
-  protected readonly SERVICE = AcceptedService.fanza;
   public createdBars = 0;
 
   constructor(private readonly product: Product | null) {
@@ -33,7 +32,6 @@ class TestContentScript extends BaseContentScript {
 }
 
 class MountTestContentScript extends BaseContentScript {
-  protected readonly SERVICE = AcceptedService.fanza;
 
   protected scrape(): Product | null {
     return null;
@@ -57,7 +55,6 @@ class MountTestContentScript extends BaseContentScript {
 }
 
 class DeclarativeMountTestContentScript extends BaseContentScript {
-  protected readonly SERVICE = AcceptedService.fanza;
   protected readonly rootElementMountPoint = {
     target: "#header",
     position: "afterend" as const,
@@ -73,7 +70,6 @@ class DeclarativeMountTestContentScript extends BaseContentScript {
 }
 
 class DetailTestContentScript extends DetailContentScript<{ title: string }> {
-  protected readonly SERVICE = AcceptedService.fanza;
   protected readonly rootElementMountPoint = { target: "body" };
 
   constructor(private readonly scrapedData: { title: string } | null) {
@@ -238,7 +234,6 @@ describe("動的描画サイト (waitForDynamicContent)", () => {
   });
 
   class DynamicScript extends BaseContentScript {
-    protected readonly SERVICE = AcceptedService.fanza;
     protected readonly waitForDynamicContent = true;
     protected readonly scrapeTimeoutMs = 50;
 

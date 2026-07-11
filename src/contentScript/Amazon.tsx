@@ -7,7 +7,6 @@ import { amazonSite } from "../sites/amazon";
  * Amazonのページを開いたときに実行される
  */
 class Amazon extends DetailContentScript<AmazonScrapedData> {
-  protected readonly SERVICE = amazonSite.service;
   protected readonly rootElementMountPoint = { target: "#navbar" };
 
   protected scrapeData(): AmazonScrapedData | null {
