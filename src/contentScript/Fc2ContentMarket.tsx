@@ -6,7 +6,6 @@ import { Fc2ContentMarketScrapedData } from "../scraping/types";
 import { fc2ContentMarketSite } from "../sites/fc2ContentMarket";
 
 class FC2ContentMarket extends DetailContentScript<Fc2ContentMarketScrapedData> {
-  protected readonly SERVICE = fc2ContentMarketSite.service;
   protected readonly rootElementMountPoint = {
     target: "header",
     position: "afterend" as const,

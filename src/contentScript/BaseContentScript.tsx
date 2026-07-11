@@ -1,4 +1,3 @@
-import { AcceptedService } from "../constant";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { CreatePageBar } from "../organism/CreatePageBar";
@@ -26,9 +25,6 @@ type RootElementMountPoint = {
  */
 export abstract class BaseContentScript {
   protected readonly ROOT_ELEM = "uniBarRoot";
-  // これらは必ず実装してください
-  protected readonly SERVICE: AcceptedService;
-
   /**
    * BFF / SPA で本文が後から描画されるサイトは true にする。
    * true の場合、即時 scrape に失敗しても DOM の変化を監視して再 scrape する。

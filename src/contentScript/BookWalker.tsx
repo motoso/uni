@@ -8,7 +8,6 @@ import { bookWalkerSite } from "../sites/bookWalker";
  * https://bookwalker.jp/dea73feaf6-9f21-4c46-ac85-991153a0b71b/
  */
 class BookWalker extends DetailContentScript<BookWalkerScrapedData> {
-  protected readonly SERVICE = bookWalkerSite.service;
   protected readonly rootElementMountPoint = {
     target: () =>
       document.getElementsByClassName("header")[0] ||

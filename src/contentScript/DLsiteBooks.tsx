@@ -8,7 +8,6 @@ import { dlsiteBooksSite } from "../sites/dlsiteBooks";
  * https://www.dlsite.com/books/work/=/product_id/BJ183632.html
  */
 class DLsiteBooks extends DetailContentScript<DLsiteBooksScrapedData> {
-  protected readonly SERVICE = dlsiteBooksSite.service;
   protected readonly rootElementMountPoint = { target: "#header" };
 
   protected scrapeData(): DLsiteBooksScrapedData | null {
