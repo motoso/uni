@@ -1,6 +1,6 @@
 {
   "name": "uni",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "My bibliographies all are in Cosense - Cross-browser extension (Chrome & Firefox compatible)",
   "scripts": {
     "build": "wxt build --browser chrome",
