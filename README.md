@@ -139,6 +139,8 @@ npm run package:chrome   # Chrome Web Store用
 npm run package:firefox  # Firefox Add-ons用
 ```
 
+Chrome Web StoreへのアップロードとOAuth認証情報の更新については、[Chrome Web Storeリリース手順](docs/chrome-web-store-release.md)を参照してください。
+
 ## Technical Details
 
 ### Browser Differences
