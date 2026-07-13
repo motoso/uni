@@ -1,4 +1,3 @@
-import ky from "ky";
 import type { BibliographySearchGateway } from "../ports/bibliographySearch";
 import { SCRAPBOX_BASE_URL } from "../scrapbox/constants";
 
@@ -14,5 +13,9 @@ export const searchScrapbox: BibliographySearchGateway = async (
   });
   const searchUrl = `${SCRAPBOX_BASE_URL}/api/pages/${projectName}/search/query?${params}`;
   console.log("[eventPage] Performing direct search on Scrapbox:", searchUrl);
-  return ky.get(searchUrl, { credentials: "include" }).json();
+  const response = await fetch(searchUrl, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`Scrapbox search failed: ${response.status}`);
+  }
+  return response.json();
 };
