@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from "preact/compat";
 import Product from "../Product";
 import { scrapboxPageUrl } from "../scrapbox/scrapboxPageUrl";
 import { readScrapboxFormats } from "../settings/scrapboxFormatSettings";

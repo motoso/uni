@@ -1,13 +1,13 @@
 # uni リファクタリング計画（Phase 1 完了後）
 
-> 更新: 2026-07-10 / 最新 `main` (`64f0661`, `Merge pull request #39 from motoso/codex/fix-alert-bar-overflow`) を基準に更新。
+> 更新: 2026-07-13 / 最新 `main` (`50a02a1`, `Merge pull request #44 from motoso/codex/phase7b-wxt`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
 > Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
-> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。Phase 7b（WXT へのビルド基盤移行）は完了済み。次の作業対象は Phase 8。
+> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。Phase 7b（WXT へのビルド基盤移行）と Phase 8（バー UI の Preact compat 化）は完了済み。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -376,7 +376,7 @@ Phase 7a の結論に従う:
 - Chrome の `declarativeContent` permission と Firefox の gecko 設定を browser target ごとの manifest 設定として維持。
 - 既存の runtime logic は薄い entrypoint adapter から読み込み、移行時のロジック変更を回避。
 
-### Phase 8 — バー UI ランタイム軽量化
+### Phase 8 — バー UI ランタイム軽量化（完了）
 
 目的:
 
@@ -391,6 +391,14 @@ Phase 7a の結論に従う:
 
 - 1サイトだけ PoC し、bundle size と保守性を比較する。
 - popup は React 維持でよい。対象は content script のバー UI のみ。
+
+PoC 実測（基準 `50a02a1`、BookWalker content script 単体、Chrome MV3 production build、`wc -c` / `gzip -c | wc -c`）:
+
+- React: 218,986 bytes（gzip 69,107 bytes）
+- Preact compat: 47,182 bytes（gzip 17,308 bytes）
+- 削減率: 約 78.5%（gzip 約 75.0%）
+
+上記結果から Preact compat を採用し、popup は React のまま、content script のバー UI とカート UI のみ切り替える。
 
 ## 6. リファクタとは別に切り出す Issue
 
