@@ -39,15 +39,12 @@
     "@types/chrome": "0.1.32",
     "@types/jest": "30.0.0",
     "@types/jsdom": "^27.0.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
     "@types/webextension-polyfill": "^0.12.3",
     "dependency-cruiser": "^17.4.3",
     "jest": "30.2.0",
     "jest-webextension-mock": "^4.0.0",
     "jsdom": "^27.0.0",
     "linkedom": "^0.18.12",
-    "node-fetch": "^3.3.2",
     "postcss": "8.5.6",
     "prettier": "3.6.2",
     "sass": "1.93.3",
@@ -59,8 +56,6 @@
   },
   "dependencies": {
     "dayjs": "1.11.19",
-    "preact": "10.29.7",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "preact": "10.29.7"
   }
 }

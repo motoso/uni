@@ -5,24 +5,6 @@ export type MessageErrorDto = {
   name?: string;
 };
 
-export type ScrapboxSearchApiPageDto = {
-  image: string;
-  title: string;
-  lines: string[];
-  created: number;
-  updated: number;
-};
-
-export type ScrapboxSearchApiResponseDto = {
-  count: number;
-  existsExactTitleMatch: boolean;
-  limit: number;
-  pages: ScrapboxSearchApiPageDto[];
-  projectName: string;
-  query: { words: string[]; excludes: string[] };
-  searchQuery: string;
-};
-
 export type ScrapboxPageDto = {
   title: string;
   imageUrl: string;

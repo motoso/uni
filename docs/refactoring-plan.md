@@ -1,13 +1,14 @@
-# uni リファクタリング計画（Phase 1 完了後）
+# uni リファクタリング計画（完了・アーカイブ）
 
-> 更新: 2026-07-13 / 最新 `main` (`33ee59b`, `Merge pull request #45 from motoso/codex/phase8-ui-runtime`) を基準に更新。
+> **状態: 完了・アーカイブ。** 今後の改善はこの計画を延長せず、個別の Issue として扱う。
+> 更新: 2026-07-13 / 最新 `main` (`0b8fd60`, `Merge pull request #46 from motoso/codex/phase9-search-ports`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
 > Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
-> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。Phase 7b（WXT へのビルド基盤移行）と Phase 8（バー UI の Preact compat 化）は完了済み。
+> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。Phase 7b（WXT へのビルド基盤移行）、Phase 8（UI の Preact compat 化）、Phase 9（background 検索処理の port / usecase 分離）は完了済み。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -135,7 +136,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 - unresolved dependency 禁止。
 - `eventPage.ts` は `Product`/UI/contentScript/scraper を import しない。
 - `src/scraping` は `Product`/UI/extension API/Scrapbox を import しない。
-- 将来の `src/domain` は browser/UI/network/storage/transport に依存しない。`react`, `react-dom`, `ky`, `webextension-polyfill`, `dayjs` などの runtime npm package も直接 import しない。
+- 将来の `src/domain` は browser/UI/network/storage/transport に依存しない。`react`, `react-dom`, `preact`, `ky`, `webextension-polyfill`, `dayjs` などの runtime npm package も直接 import しない。
 - 将来の `src/usecase` は presentation / concrete infrastructure に依存しない。UI / extension runtime / HTTP client の npm package も直接 import しない。
 - 将来の `src/ports` は concrete implementation に依存しない。UI / extension runtime / HTTP client の npm package も直接 import しない。
 
@@ -155,7 +156,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 / Phase 7b / Phase 8 は完了済みとして扱う。計画済みのアーキテクチャ改善は完了し、以後は「リファクタとは別に切り出す Issue」を個別に扱う。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 / Phase 7b / Phase 8 / Phase 9 は完了済みとして扱う。計画済みのアーキテクチャ改善は完了し、以後は「リファクタとは別に切り出す Issue」を個別に扱う。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -376,7 +377,7 @@ Phase 7a の結論に従う:
 - Chrome の `declarativeContent` permission と Firefox の gecko 設定を browser target ごとの manifest 設定として維持。
 - 既存の runtime logic は薄い entrypoint adapter から読み込み、移行時のロジック変更を回避。
 
-### Phase 8 — バー UI ランタイム軽量化（完了）
+### Phase 8 — UI ランタイム軽量化（完了）
 
 目的:
 
@@ -398,10 +399,16 @@ PoC 実測（基準 `50a02a1`、BookWalker content script 単体、Chrome MV3 pr
 - Preact compat: 47,182 bytes（gzip 17,308 bytes）
 - 削減率: 約 78.5%（gzip 約 75.0%）
 
-上記結果から Preact compat を採用し、popup は React のまま、content script のバー UI とカート UI のみ切り替える。
+上記結果から Preact compat を採用し、content script のバー UI、カート UI、popup を切り替えた。
+
+### Phase 9 — background 検索境界の分離（完了）
+
+- background の検索処理を port / usecase / infrastructure に分離。
+- Scrapbox 検索を標準 `fetch` に移行。
+- dependency-cruiser で検索境界の依存方向を固定。
+- background 検索境界の Small test を追加。
 
 ## 6. リファクタとは別に切り出す Issue
 
 - `titleForSearch` の4語丸めによる「もう買ってるかも」false positive。
-- `SearchResult.existsExactTitleMatch` を実際に使うかどうか。
 - `count >= 1` 判定を厳密化する仕様判断。

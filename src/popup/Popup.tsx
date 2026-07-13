@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import * as React from "preact/compat";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import "./Popup.scss";
 import "../css/tailwind.scss";
 import { StorageKeyProjectName, StorageKeyScrapboxFormats } from "../chromeApi";
@@ -180,7 +181,7 @@ export default function Popup() {
             id="tabs"
             name="tabs"
             className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-            onChange={(e) => setActiveTab(e.target.value as ProductType)}
+            onChange={(e) => setActiveTab(e.currentTarget.value as ProductType)}
             value={activeTab}
           >
             <option value="book">書籍</option>
