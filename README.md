@@ -98,10 +98,10 @@ npm run watch:firefox
 
 ```bash
 # Chrome用ZIPパッケージ作成
-npm run package:chrome    # → uni-chrome.zip
+npm run package:chrome    # → dist/uni-chrome.zip
 
 # Firefox用ZIPパッケージ作成  
-npm run package:firefox   # → uni-firefox.zip
+npm run package:firefox   # → dist/uni-firefox.zip
 
 # 両方同時作成
 npm run package:all
@@ -110,9 +110,9 @@ npm run package:all
 ビルド結果は以下のディレクトリ構造で出力されます：
 ```
 dist/
-├── chrome/        # Chrome用ビルド
-├── firefox/       # Firefox用ビルド
-└── *.png         # アイコンファイル
+├── chrome-mv3/    # Chrome用ビルド
+├── firefox-mv3/   # Firefox用ビルド
+└── *.zip          # ストア配布用パッケージ
 ```
 
 ## Installation
@@ -122,14 +122,14 @@ dist/
 1.  `npm run build:chrome` でChromeビルドを実行
 2.  [chrome://extensions](chrome://extensions) を開く
 3.  「デベロッパーモード」を有効にする
-4.  「パッケージ化されていない拡張機能を読み込む」で `dist/chrome` フォルダを選択
+4.  「パッケージ化されていない拡張機能を読み込む」で `dist/chrome-mv3` フォルダを選択
 
 ### Mozilla Firefox
 
 1.  `npm run build:firefox` でFirefoxビルドを実行
 2.  [about:debugging](about:debugging) を開く
 3.  「この Firefox」→「一時的なアドオンを読み込む」
-4.  `dist/firefox` フォルダ内の `manifest.json` を選択
+4.  `dist/firefox-mv3` フォルダ内の `manifest.json` を選択
 
 ### ストア配布用
 

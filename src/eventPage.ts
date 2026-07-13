@@ -57,59 +57,60 @@ export async function handleBibliographySearchMessage(
   }
 }
 
-browser.runtime.onMessage.addListener((request) => {
-  if (isSearchBibliographyRequest(request)) {
-    return handleBibliographySearchMessage(request);
-  }
+export function registerBackgroundListeners(): void {
+  browser.runtime.onMessage.addListener((request) => {
+    if (isSearchBibliographyRequest(request)) {
+      return handleBibliographySearchMessage(request);
+    }
 
-  return undefined;
-});
+    return undefined;
+  });
 
-// 拡張のボタンのpopupを有効にする条件のルール (Chrome only)
-let rule: any = null;
-if (browser.declarativeContent) {
-  rule = {
-    conditions: [
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: {
-          hostEquals: "book.dmm.co.jp",
-          pathContains: "detail/",
-          schemes: ["https"],
-        },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostEquals: "www.dlsite.com", schemes: ["https"] },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: "toranoana.jp", schemes: ["https"] },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: "melonbooks.co.jp", schemes: ["https"] },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: "bookwalker.jp", schemes: ["https"] },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: "www.amazon.co.jp", schemes: ["https"] },
-      }),
-      new browser.declarativeContent.PageStateMatcher({
-        pageUrl: { hostSuffix: "www.suruga-ya.jp", schemes: ["https"] },
-      }),
-    ],
-    actions: [new browser.declarativeContent.ShowAction()],
-  };
+  // 拡張のボタンのpopupを有効にする条件のルール (Chrome only)
+  const rule = browser.declarativeContent
+    ? {
+        conditions: [
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: {
+              hostEquals: "book.dmm.co.jp",
+              pathContains: "detail/",
+              schemes: ["https"],
+            },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostEquals: "www.dlsite.com", schemes: ["https"] },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostSuffix: "toranoana.jp", schemes: ["https"] },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostSuffix: "melonbooks.co.jp", schemes: ["https"] },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostSuffix: "bookwalker.jp", schemes: ["https"] },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostSuffix: "www.amazon.co.jp", schemes: ["https"] },
+          }),
+          new browser.declarativeContent.PageStateMatcher({
+            pageUrl: { hostSuffix: "www.suruga-ya.jp", schemes: ["https"] },
+          }),
+        ],
+        actions: [new browser.declarativeContent.ShowAction()],
+      }
+    : null;
+
+  // Added rules are saved across browser restarts, so register them as follows
+  // https://developer.chrome.com/extensions/declarativeContent
+  // Note: declarativeContent is only available in Chrome
+  browser.runtime.onInstalled.addListener(() => {
+    if (browser.declarativeContent && rule) {
+      browser.declarativeContent.onPageChanged.removeRules(undefined, () => {
+        browser.declarativeContent.onPageChanged.addRules([rule]);
+      });
+    }
+  });
 }
-
-// Added rules are saved across browser restarts, so register them as follows
-// https://developer.chrome.com/extensions/declarativeContent
-// Note: declarativeContent is only available in Chrome
-browser.runtime.onInstalled.addListener((details) => {
-  if (browser.declarativeContent && rule) {
-    browser.declarativeContent.onPageChanged.removeRules(undefined, () => {
-      browser.declarativeContent.onPageChanged.addRules([rule]);
-    });
-  }
-});
 
 // Function to perform the actual Scrapbox search using ky
 async function performActualScrapboxSearch(

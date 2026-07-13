@@ -7,7 +7,7 @@
 > Phase 6（フィクスチャテストの導入）は主要対象の実ページ由来 HTML fixture と Small characterization test を追加済み。
 > Phase 3（Scraper 契約の統一）は完了済み。`publishedAt` の `Date | null` 統一、scraped data 型の集約、scraper logging 集約、Amazon publisher parse 修正、Amazon speculative fallback selector 削減を追加済み。
 > Phase 2（Product 責務分離）は完了。`titleForSearch` と Scrapbox placeholder formatter を pure domain function として `src/domain` に抽出し、`createScrapboxBodyString` を storage 非依存の同期 pure メソッド化、全角→半角変換を `src/domain/halfWidth.ts` に集約、各 product class の default format を `{token}` 化して toTemplateVars 経由の1経路に統一済み。
-> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。次の作業対象は Phase 7b。
+> Phase 4（Content Script 共通化）は完了。Phase 5（サイトレジストリ化）は、詳細商品サイトの service / host / match pattern / product type / scraper / product factory / content script entry を framework 非依存の `src/sites` に集約済み。Phase 7b（WXT へのビルド基盤移行）は完了済み。次の作業対象は Phase 8。
 > 今後はフル Clean Architecture ではなく、uni の規模に合わせた **DDD-lite + 最小 port 境界** を採用する。
 
 ## 0. 現在地
@@ -155,7 +155,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 は完了済みとして扱う。次の作業対象は Phase 7b。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 / Phase 7b は完了済みとして扱う。次の作業対象は Phase 8。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
@@ -367,6 +367,14 @@ Phase 7a の結論に従う:
 - Phase 6 の fixture test が主要サイトに入っている。
 - Phase 1.5 の message boundary が一本化済み。
 - 移行PRではロジック変更を混ぜない。
+
+実績:
+
+- webpack / `wext-manifest-loader` を WXT に置換し、Chrome / Firefox の MV3 build・zip scripts を WXT CLI に統一。
+- background、popup、12 商品サイト、2 カートの WXT entrypoint を追加。
+- 商品サイトの match pattern は Phase 5 の plain site definition を参照し、manifest との二重管理を解消。
+- Chrome の `declarativeContent` permission と Firefox の gecko 設定を browser target ごとの manifest 設定として維持。
+- 既存の runtime logic は薄い entrypoint adapter から読み込み、移行時のロジック変更を回避。
 
 ### Phase 8 — バー UI ランタイム軽量化
 

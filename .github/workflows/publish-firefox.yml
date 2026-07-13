@@ -41,6 +41,6 @@ jobs:
           npx web-ext sign \
             --api-key=${{ steps.load_secrets.outputs.FIREFOX_API_KEY }} \
             --api-secret=${{ steps.load_secrets.outputs.FIREFOX_API_SECRET }} \
-            --source-dir ./dist/firefox \
+            --source-dir ./dist/firefox-mv3 \
             --artifacts-dir ./dist \
             --channel listed

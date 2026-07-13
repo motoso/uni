@@ -44,4 +44,4 @@ jobs:
           client_id: ${{ steps.load_secrets.outputs.CHROME_CLIENT_ID }}
           client_secret: ${{ steps.load_secrets.outputs.CHROME_CLIENT_SECRET }}
           refresh_token: ${{ steps.load_secrets.outputs.CHROME_REFRESH_TOKEN }}
-          zip_file: uni-chrome.zip
+          zip_file: dist/uni-chrome.zip
