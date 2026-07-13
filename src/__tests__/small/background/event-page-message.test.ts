@@ -1,21 +1,17 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
-import { handleBibliographySearchMessage } from "../../../eventPage";
+import type {
+  BibliographySearchGateway,
+  BibliographySearchResult,
+} from "../../../ports/bibliographySearch";
+import { searchBibliography } from "../../../usecase/searchBibliography";
 import {
-  ScrapboxSearchApiResponseDto,
   SearchBibliographyAction,
   SearchBibliographyResponseDto,
 } from "../../../scrapbox/searchDtos";
 
-type SearchFn = (
-  projectName: string,
-  query: string,
-) => Promise<ScrapboxSearchApiResponseDto>;
-
-const makeRawSearchResponse = (count: number): ScrapboxSearchApiResponseDto => {
+const makeSearchResponse = (count: number): BibliographySearchResult => {
   return {
     count,
-    existsExactTitleMatch: count > 0,
-    limit: 30,
     pages:
       count > 0
         ? [
@@ -23,13 +19,9 @@ const makeRawSearchResponse = (count: number): ScrapboxSearchApiResponseDto => {
               image: "https://example.com/image.jpg",
               title: "既存ページ",
               lines: ["line 1", "line 2"],
-              created: 1,
-              updated: 2,
             },
           ]
         : [],
-    projectName: "my-project",
-    query: { words: ["検索語"], excludes: [] },
     searchQuery: "検索語",
   };
 };
@@ -45,10 +37,10 @@ afterEach(() => {
 
 test("検索結果がある場合はexistsPageを返す", async () => {
   const search = jest
-    .fn<SearchFn>()
-    .mockResolvedValue(makeRawSearchResponse(1));
+    .fn<BibliographySearchGateway>()
+    .mockResolvedValue(makeSearchResponse(1));
 
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest
@@ -81,13 +73,15 @@ test("検索結果がある場合はexistsPageを返す", async () => {
 });
 
 test("検索結果がない場合はcreatePageを返す", async () => {
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest
         .fn<() => Promise<string>>()
         .mockResolvedValue("my-project"),
-      search: jest.fn<SearchFn>().mockResolvedValue(makeRawSearchResponse(0)),
+      search: jest
+        .fn<BibliographySearchGateway>()
+        .mockResolvedValue(makeSearchResponse(0)),
     },
   );
 
@@ -105,9 +99,9 @@ test("検索結果がない場合はcreatePageを返す", async () => {
 
 test("queryがない場合はsearchErrorを返して検索しない", async () => {
   const getProjectName = jest.fn<() => Promise<string>>();
-  const search = jest.fn<SearchFn>();
+  const search = jest.fn<BibliographySearchGateway>();
 
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction },
     { getProjectName, search },
   );
@@ -124,14 +118,14 @@ test("queryがない場合はsearchErrorを返して検索しない", async () =
 });
 
 test("検索が失敗した場合はsearchErrorを返す", async () => {
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest
         .fn<() => Promise<string>>()
         .mockResolvedValue("my-project"),
       search: jest
-        .fn<SearchFn>()
+        .fn<BibliographySearchGateway>()
         .mockRejectedValue(new Error("Scrapbox unavailable")),
     },
   );
@@ -141,6 +135,50 @@ test("検索が失敗した場合はsearchErrorを返す", async () => {
     error: {
       message: "Scrapbox unavailable",
       name: "Error",
+    },
+  });
+});
+
+test("project nameの読込が失敗した場合は検索せずerrorを返す", async () => {
+  const search = jest.fn<BibliographySearchGateway>();
+
+  const response = await searchBibliography(
+    { action: SearchBibliographyAction, query: "検索語" },
+    {
+      getProjectName: jest
+        .fn<() => Promise<string>>()
+        .mockRejectedValue(new Error("Storage unavailable")),
+      search,
+    },
+  );
+
+  expect(search).not.toHaveBeenCalled();
+  expect(response).toEqual({
+    status: "error",
+    error: {
+      message: "Storage unavailable",
+      name: "Error",
+    },
+  });
+});
+
+test("Error以外の例外もmessage DTOへ変換する", async () => {
+  const response = await searchBibliography(
+    { action: SearchBibliographyAction, query: "検索語" },
+    {
+      getProjectName: jest
+        .fn<() => Promise<string>>()
+        .mockResolvedValue("my-project"),
+      search: jest
+        .fn<BibliographySearchGateway>()
+        .mockRejectedValue("unknown failure"),
+    },
+  );
+
+  expect(response).toEqual({
+    status: "error",
+    error: {
+      message: "unknown failure",
     },
   });
 });
