@@ -58,16 +58,6 @@
       ]
     },
     {
-      "description": "Group React packages",
-      "groupName": "React",
-      "matchPackageNames": [
-        "react",
-        "react-dom",
-        "@types/react",
-        "@types/react-dom"
-      ]
-    },
-    {
       "description": "Group Tailwind CSS packages",
       "groupName": "Tailwind CSS",
       "matchPackageNames": [

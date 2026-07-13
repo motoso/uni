@@ -87,19 +87,6 @@ module.exports = {
             },
         },
         {
-            name: "content-script-ui-must-use-preact",
-            severity: "error",
-            comment:
-                "Content-script UI uses Preact compat to avoid bundling React in every site entry. The popup may continue to use React.",
-            from: {
-                path: ["^src/contentScript/", "^src/organism/"],
-            },
-            to: {
-                dependencyTypes: ["npm"],
-                path: ["^react$", "^react-dom"],
-            },
-        },
-        {
             name: "products-must-not-import-storage-keys",
             severity: "error",
             comment:

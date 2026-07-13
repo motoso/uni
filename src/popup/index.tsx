@@ -1,5 +1,5 @@
-import * as React from "react";
-import { createRoot } from "react-dom/client";
+import * as React from "preact/compat";
+import { createRoot } from "preact/compat/client";
 import Popup from "./Popup";
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tab) => {
