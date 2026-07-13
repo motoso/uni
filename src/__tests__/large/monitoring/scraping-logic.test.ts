@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { scrapeFanzaVideoData } from "../../../scraping/fanza-video-scraper";
 import { scrapeFanzaDoujinData } from "../../../scraping/fanza-doujin-scraper";
 import { scrapeFanzaBooksData } from "../../../scraping/fanza-books-scraper";
@@ -21,6 +21,41 @@ import {
 
 const allSites = [...staticSites, ...spaSites];
 
+// Scraper functions are serialized into the page without their module scope.
+// Provide module-level runtime dependencies in the browser global scope.
+const injectedScraperDependencies =
+  "globalThis.__scraperErrors = [];" +
+  "globalThis.logger = { debug: () => {}, error: (...args) => globalThis.__scraperErrors.push(args.map((arg) => arg instanceof Error ? (arg.stack || arg.message) : String(arg)).join(' ')) };" +
+  // ts-jest currently rewrites the BookWalker import to this module variable.
+  // Replace this serialization shim with a real bundled ContentScript test: see the follow-up issue.
+  "globalThis._halfWidth = { toHalfWidth: (value, pattern) => value.replace(pattern, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0)) };";
+
+async function runInjectedScraper<T>(
+  page: Page,
+  scraper: (document: Document) => T,
+): Promise<T> {
+  const { result, errors } = await page.evaluate(
+    ({ dependencies, scraperSource }) => {
+      const runScraper = new Function(
+        "document",
+        `${dependencies}\nreturn (${scraperSource})(document);`,
+      );
+      const result = runScraper(document);
+      return {
+        result,
+        errors: (globalThis as any).__scraperErrors as string[],
+      };
+    },
+    {
+      dependencies: injectedScraperDependencies,
+      scraperSource: scraper.toString(),
+    },
+  );
+
+  expect(result, errors.join("\n")).toBeTruthy();
+  return result as T;
+}
+
 // FANZA Video専用のスクレイピングロジックテスト
 test.describe("FANZA Video Scraping Logic", () => {
   const siteConfig = spaSites.find((site) => site.service === "FANZA Video");
@@ -39,15 +74,7 @@ test.describe("FANZA Video Scraping Logic", () => {
 
     await waitForSPAContent(page, siteConfig.selectors);
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeFanzaVideoData = ${scrapeFanzaVideoData.toString()};`,
-    });
-
-    // 実際のFANZAVideoスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeFanzaVideoData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeFanzaVideoData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -85,15 +112,10 @@ test.describe("FANZA Doujin Scraping Logic", () => {
 
     await waitForSPAContent(page, siteConfig.selectors);
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeFanzaDoujinData = ${scrapeFanzaDoujinData.toString()};`,
-    });
-
-    // 実際のFANZADoujinスクレイピング関数をページ内で実行
-    const doujinScrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeFanzaDoujinData(document);
-    });
+    const doujinScrapingResult = await runInjectedScraper(
+      page,
+      scrapeFanzaDoujinData,
+    );
 
     // 結果を検証
     expect(doujinScrapingResult.title).toBeTruthy();
@@ -132,15 +154,10 @@ test.describe("FANZA Books Scraping Logic", () => {
     await page.waitForTimeout(3000);
     await waitForSPAContent(page, siteConfig.selectors);
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeFanzaBooksData = ${scrapeFanzaBooksData.toString()};`,
-    });
-
-    // 実際のFANZABooksスクレイピング関数をページ内で実行
-    const booksScrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeFanzaBooksData(document);
-    });
+    const booksScrapingResult = await runInjectedScraper(
+      page,
+      scrapeFanzaBooksData,
+    );
 
     // 結果を検証
     expect(booksScrapingResult).toBeTruthy();
@@ -174,15 +191,7 @@ test.describe("Amazon Scraping Logic", () => {
       await page.goto(siteConfig.url);
       await page.waitForLoadState("load");
 
-      // 関数をページに注入
-      await page.addScriptTag({
-        content: `window.scrapeAmazonData = ${scrapeAmazonData.toString()};`,
-      });
-
-      // 実際のAmazonスクレイピング関数をページ内で実行
-      const scrapingResult = await page.evaluate(() => {
-        return (window as any).scrapeAmazonData(document);
-      });
+      const scrapingResult = await runInjectedScraper(page, scrapeAmazonData);
 
       // スクレイピング結果を検証
       expect(scrapingResult).toBeTruthy();
@@ -220,18 +229,9 @@ test.describe("BookWalker Scraping Logic", () => {
     }
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeBookWalkerData = ${scrapeBookWalkerData.toString()};`,
-    });
-
-    // 実際のBookWalkerスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeBookWalkerData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeBookWalkerData);
 
     // スクレイピング結果を検証
-    expect(scrapingResult).toBeTruthy();
     expect(scrapingResult.title).toBeTruthy();
     expect(scrapingResult.title.length).toBeGreaterThan(0);
     expect(scrapingResult.url).toContain("bookwalker.jp");
@@ -266,15 +266,7 @@ test.describe("DLsite Scraping Logic", () => {
     }
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeDLsiteData = ${scrapeDLsiteData.toString()};`,
-    });
-
-    // 実際のDLsiteスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeDLsiteData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeDLsiteData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -313,15 +305,10 @@ test.describe("DLsiteBooks Scraping Logic", () => {
     }
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeDLsiteBooksData = ${scrapeDLsiteBooksData.toString()};`,
-    });
-
-    // 実際のDLsiteBooksスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeDLsiteBooksData(document);
-    });
+    const scrapingResult = await runInjectedScraper(
+      page,
+      scrapeDLsiteBooksData,
+    );
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -356,15 +343,7 @@ test.describe("Melonbooks Scraping Logic", () => {
     await page.goto(siteConfig.url);
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeMelonbooksData = ${scrapeMelonbooksData.toString()};`,
-    });
-
-    // 実際のMelonbooksスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeMelonbooksData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeMelonbooksData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -406,15 +385,10 @@ test.describe("DLsiteManiax Scraping Logic", () => {
     await page.goto(siteConfig.url);
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeDLsiteManiaxData = ${scrapeDLsiteManiaxData.toString()};`,
-    });
-
-    // 実際のDLsiteManiaxスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeDLsiteManiaxData(document);
-    });
+    const scrapingResult = await runInjectedScraper(
+      page,
+      scrapeDLsiteManiaxData,
+    );
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -454,15 +428,10 @@ test.describe("Fc2ContentMarket Scraping Logic", () => {
     await page.goto(siteConfig.url);
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeFc2ContentMarketData = ${scrapeFc2ContentMarketData.toString()};`,
-    });
-
-    // 実際のFc2ContentMarketスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeFc2ContentMarketData(document);
-    });
+    const scrapingResult = await runInjectedScraper(
+      page,
+      scrapeFc2ContentMarketData,
+    );
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -494,15 +463,7 @@ test.describe("Surugaya Scraping Logic", () => {
     await page.goto(siteConfig.url);
     await page.waitForLoadState("load");
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeSurugayaData = ${scrapeSurugayaData.toString()};`,
-    });
-
-    // 実際のSurugayaスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeSurugayaData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeSurugayaData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -536,15 +497,7 @@ test.describe("Toranoana Scraping Logic", () => {
     await page.goto(siteConfig.url);
     await page.waitForLoadState("load");
 
-    // CSP問題を回避するため、関数を直接evaluateで実行
-    const scrapingResult = await page.evaluate((scrapeToranoanaFunc) => {
-      // スクレイピング関数をページ内で直接実行
-      const func = new Function(
-        "document",
-        `return (${scrapeToranoanaFunc})(document);`,
-      );
-      return func(document);
-    }, scrapeToranoanaData.toString());
+    const scrapingResult = await runInjectedScraper(page, scrapeToranoanaData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
@@ -589,15 +542,7 @@ test.describe("FANZA Anime Scraping Logic", () => {
 
     await waitForSPAContent(page, siteConfig.selectors);
 
-    // 関数をページに注入
-    await page.addScriptTag({
-      content: `window.scrapeFanzaAnimeData = ${scrapeFanzaAnimeData.toString()};`,
-    });
-
-    // 実際のFANZA Animeスクレイピング関数をページ内で実行
-    const scrapingResult = await page.evaluate(() => {
-      return (window as any).scrapeFanzaAnimeData(document);
-    });
+    const scrapingResult = await runInjectedScraper(page, scrapeFanzaAnimeData);
 
     // スクレイピング結果を検証
     expect(scrapingResult).toBeTruthy();
