@@ -32,7 +32,6 @@ class TestContentScript extends BaseContentScript {
 }
 
 class MountTestContentScript extends BaseContentScript {
-
   protected scrape(): Product | null {
     return null;
   }
@@ -251,9 +250,7 @@ describe("動的描画サイト (waitForDynamicContent)", () => {
   }
 
   test("即時scrape失敗後、DOM変化でscrapeが成功したら検索する", async () => {
-    const { document } = parseHTML(
-      "<!DOCTYPE html><html><body></body></html>",
-    );
+    const { document } = parseHTML("<!DOCTYPE html><html><body></body></html>");
     setGlobalDocument(document as unknown as Document);
 
     new DynamicScript(document as unknown as Document).execute();
@@ -275,9 +272,7 @@ describe("動的描画サイト (waitForDynamicContent)", () => {
   });
 
   test("DOMが変化してもscrapeが成功しなければ検索しない", async () => {
-    const { document } = parseHTML(
-      "<!DOCTYPE html><html><body></body></html>",
-    );
+    const { document } = parseHTML("<!DOCTYPE html><html><body></body></html>");
     setGlobalDocument(document as unknown as Document);
 
     new DynamicScript(document as unknown as Document).execute();

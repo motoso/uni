@@ -12,13 +12,15 @@ export function normalizeProjectName(input: string): string {
 
   // Extract project name from full URL if provided
   // Supports: https://, http://, protocol-less, query params, hash fragments
-  const urlMatch = projectName.match(/(?:https?:\/\/)?scrapbox\.io\/([^\/?#]+)/);
+  const urlMatch = projectName.match(
+    /(?:https?:\/\/)?scrapbox\.io\/([^\/?#]+)/,
+  );
   if (urlMatch) {
     projectName = urlMatch[1];
   }
 
   // Remove trailing slash(es)
-  projectName = projectName.replace(/\/+$/, '');
+  projectName = projectName.replace(/\/+$/, "");
 
   return projectName;
 }

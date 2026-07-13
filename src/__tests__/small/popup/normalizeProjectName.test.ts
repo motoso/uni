@@ -10,19 +10,27 @@ test("プロジェクト名_末尾スラッシュ削除", () => {
 });
 
 test("完全なURL_httpsプロトコル付き", () => {
-  expect(normalizeProjectName("https://scrapbox.io/project-name")).toBe("project-name");
+  expect(normalizeProjectName("https://scrapbox.io/project-name")).toBe(
+    "project-name",
+  );
 });
 
 test("完全なURL_httpsプロトコル付き_末尾スラッシュあり", () => {
-  expect(normalizeProjectName("https://scrapbox.io/project-name/")).toBe("project-name");
+  expect(normalizeProjectName("https://scrapbox.io/project-name/")).toBe(
+    "project-name",
+  );
 });
 
 test("URL_ページパス含む場合はプロジェクト名のみ抽出", () => {
-  expect(normalizeProjectName("https://scrapbox.io/project-name/some-page")).toBe("project-name");
+  expect(
+    normalizeProjectName("https://scrapbox.io/project-name/some-page"),
+  ).toBe("project-name");
 });
 
 test("URL_クエリパラメータ含む", () => {
-  expect(normalizeProjectName("https://scrapbox.io/project-name?foo=bar")).toBe("project-name");
+  expect(normalizeProjectName("https://scrapbox.io/project-name?foo=bar")).toBe(
+    "project-name",
+  );
 });
 
 test("前後の空白削除", () => {

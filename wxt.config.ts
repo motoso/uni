@@ -10,7 +10,7 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: "Uni",
     description: "Building your library on the Cosense",
-    version: "2.1.4",
+    version: "2.1.5",
     icons: {
       16: "icon16.png",
       48: "icon48.png",

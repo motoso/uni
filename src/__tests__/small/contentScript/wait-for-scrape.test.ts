@@ -8,9 +8,7 @@ import {
 // jsdom は parse5 の ESM/CJS 境界で jest が読めないため、
 // scraper-fixtures テストと同様に linkedom で DOM を組み立てる。
 function makeDom(): Document {
-  const { document } = parseHTML(
-    "<!DOCTYPE html><html><body></body></html>",
-  );
+  const { document } = parseHTML("<!DOCTYPE html><html><body></body></html>");
   return document as unknown as Document;
 }
 
