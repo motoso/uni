@@ -235,6 +235,23 @@ module.exports = {
                 ],
             },
         },
+        {
+            name: "infrastructure-must-not-depend-on-usecases-or-presentation",
+            severity: "error",
+            comment:
+                "Infrastructure implements ports and must not call usecases or depend on presentation code.",
+            from: {
+                path: "^src/infrastructure/",
+            },
+            to: {
+                path: [
+                    "^src/usecase/",
+                    "^src/contentScript/",
+                    "^src/organism/",
+                    "^src/popup/",
+                ],
+            },
+        },
     ],
     options: {
         doNotFollow: {

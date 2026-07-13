@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, jest, test } from "@jest/globals";
-import { handleBibliographySearchMessage } from "../../../eventPage";
+import { searchBibliography } from "../../../usecase/searchBibliography";
 import {
   ScrapboxSearchApiResponseDto,
   SearchBibliographyAction,
@@ -48,7 +48,7 @@ test("検索結果がある場合はexistsPageを返す", async () => {
     .fn<SearchFn>()
     .mockResolvedValue(makeRawSearchResponse(1));
 
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest
@@ -81,7 +81,7 @@ test("検索結果がある場合はexistsPageを返す", async () => {
 });
 
 test("検索結果がない場合はcreatePageを返す", async () => {
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest
@@ -107,7 +107,7 @@ test("queryがない場合はsearchErrorを返して検索しない", async () =
   const getProjectName = jest.fn<() => Promise<string>>();
   const search = jest.fn<SearchFn>();
 
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction },
     { getProjectName, search },
   );
@@ -124,7 +124,7 @@ test("queryがない場合はsearchErrorを返して検索しない", async () =
 });
 
 test("検索が失敗した場合はsearchErrorを返す", async () => {
-  const response = await handleBibliographySearchMessage(
+  const response = await searchBibliography(
     { action: SearchBibliographyAction, query: "検索語" },
     {
       getProjectName: jest

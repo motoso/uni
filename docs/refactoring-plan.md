@@ -1,6 +1,6 @@
 # uni リファクタリング計画（Phase 1 完了後）
 
-> 更新: 2026-07-13 / 最新 `main` (`50a02a1`, `Merge pull request #44 from motoso/codex/phase7b-wxt`) を基準に更新。
+> 更新: 2026-07-13 / 最新 `main` (`33ee59b`, `Merge pull request #45 from motoso/codex/phase8-ui-runtime`) を基準に更新。
 > Phase 1（Product 丸ごと越境の廃止、検索 query DTO 化、null ガード、background の projectName 再読込、port 経路エラー応答）は完了済み。
 > Phase 1.5（検索境界の完全 DTO 化、`sendMessage` 一本化、port 経路廃止）は完了済み。
 > Phase 7a（ビルド/エントリ基盤の方針決定 ADR）は完了済み。WXT を採用方針とし、Phase 5 では自前 generator を作り込まない。
@@ -155,7 +155,7 @@ hampu と同じ考え方で、方向性チェックをCIに入れる。
 
 **Phase 7a → Phase 6 → Phase 3 → Phase 2 → Phase 4 → Phase 5 → Phase 7b → Phase 8**
 
-Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 / Phase 7b は完了済みとして扱う。次の作業対象は Phase 8。
+Phase 1 / Phase 1.5 / Phase 7a / Phase 6 / Phase 3 / Phase 2 / Phase 4 / Phase 5 / Phase 7b / Phase 8 は完了済みとして扱う。計画済みのアーキテクチャ改善は完了し、以後は「リファクタとは別に切り出す Issue」を個別に扱う。
 
 ### Phase 1.5 — 検索境界の完全 DTO 化と sendMessage 一本化（完了）
 
