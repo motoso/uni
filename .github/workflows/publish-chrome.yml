@@ -4,17 +4,32 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Validate access without publishing, or publish a new version
+        required: true
+        default: validate
+        type: choice
+        options:
+          - validate
+          - publish
 
 jobs:
   publish-chrome:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      CHROME_EXTENSION_ID: jdihchpmnchcjigdmecmjieeanhcfbpm
+      CHROME_WEB_STORE_SCOPE: https://www.googleapis.com/auth/chromewebstore
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Setup Node with mise
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
       - name: Install dependencies
         run: npm ci
@@ -27,21 +42,156 @@ jobs:
 
       - name: Load secrets from 1Password
         id: load_secrets
-        uses: 1password/load-secrets-action@v3
+        uses: 1Password/load-secrets-action@dafbe7cb03502b260e2b2893c753c352eee545bf # v3
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          CHROME_CLIENT_ID: op://Web/uni/CHROME_CLIENT_ID
-          CHROME_CLIENT_SECRET: op://Web/uni/CHROME_CLIENT_SECRET
-          CHROME_REFRESH_TOKEN: op://Web/uni/CHROME_REFRESH_TOKEN
+          CHROME_PUBLISHER_ID: op://Web/uni/CHROME_PUBLISHER_ID
+          CHROME_SERVICE_ACCOUNT_JSON: op://Web/uni/CHROME_SERVICE_ACCOUNT_JSON
+
+      - name: Authenticate to Google Cloud
+        id: google_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          credentials_json: ${{ steps.load_secrets.outputs.CHROME_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: ${{ env.CHROME_WEB_STORE_SCOPE }}
+
+      - name: Preflight Chrome Web Store access
+        env:
+          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$ACCESS_TOKEN" || -z "$CHROME_PUBLISHER_ID" ]]; then
+            echo "Chrome Web Store authentication is not configured." >&2
+            exit 1
+          fi
+
+          status_url="https://chromewebstore.googleapis.com/v2/publishers/${CHROME_PUBLISHER_ID}/items/${CHROME_EXTENSION_ID}:fetchStatus"
+          response_file="$(mktemp)"
+          http_status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "$status_url")"
+
+          if [[ "$http_status" != "200" ]]; then
+            echo "Chrome Web Store preflight failed (HTTP ${http_status}). Check the publisher ID and Developer Dashboard service-account link." >&2
+            jq -r '.error.message // "No API error message returned"' "$response_file" >&2
+            exit 1
+          fi
+
+          echo "Chrome Web Store authentication and item access verified."
 
       - name: Build and package Chrome extension
+        if: github.event_name == 'release' || inputs.mode == 'publish'
         run: npm run package:chrome
 
-      - name: Publish to Chrome Web Store
-        uses: mobilefirstllc/cws-publish@latest
-        with:
-          extension_id: jdihchpmnchcjigdmecmjieeanhcfbpm
-          client_id: ${{ steps.load_secrets.outputs.CHROME_CLIENT_ID }}
-          client_secret: ${{ steps.load_secrets.outputs.CHROME_CLIENT_SECRET }}
-          refresh_token: ${{ steps.load_secrets.outputs.CHROME_REFRESH_TOKEN }}
-          zip_file: dist/uni-chrome.zip
+      - name: Upload to Chrome Web Store
+        if: github.event_name == 'release' || inputs.mode == 'publish'
+        env:
+          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+
+          upload_url="https://chromewebstore.googleapis.com/upload/v2/publishers/${CHROME_PUBLISHER_ID}/items/${CHROME_EXTENSION_ID}:upload"
+          response_file="$(mktemp)"
+          http_status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            --header "Content-Type: application/zip" \
+            --upload-file dist/uni-chrome.zip \
+            "$upload_url")"
+
+          if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
+            echo "Chrome Web Store upload failed (HTTP ${http_status})." >&2
+            jq -r '.error.message // "No API error message returned"' "$response_file" >&2
+            exit 1
+          fi
+
+          upload_state="$(jq -r '.uploadState // empty' "$response_file")"
+          if [[ "$upload_state" != "SUCCEEDED" && "$upload_state" != "IN_PROGRESS" ]]; then
+            echo "Chrome Web Store rejected the upload (state: ${upload_state:-unknown})." >&2
+            exit 1
+          fi
+
+          echo "Chrome Web Store upload accepted (state: ${upload_state})."
+
+      - name: Wait for upload processing
+        if: github.event_name == 'release' || inputs.mode == 'publish'
+        env:
+          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+
+          status_url="https://chromewebstore.googleapis.com/v2/publishers/${CHROME_PUBLISHER_ID}/items/${CHROME_EXTENSION_ID}:fetchStatus"
+          for attempt in {1..30}; do
+            response="$(curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+              "$status_url")"
+            upload_state="$(jq -r '.lastAsyncUploadState // empty' <<<"$response")"
+
+            if [[ "$upload_state" == "SUCCEEDED" ]]; then
+              echo "Chrome Web Store finished processing the upload."
+              exit 0
+            fi
+            if [[ "$upload_state" != "IN_PROGRESS" ]]; then
+              echo "Chrome Web Store upload processing failed (state: ${upload_state:-unknown})." >&2
+              exit 1
+            fi
+
+            echo "Upload is still processing (attempt ${attempt}/30)."
+            sleep 10
+          done
+
+          echo "Timed out waiting for Chrome Web Store upload processing." >&2
+          exit 1
+
+      - name: Submit for review and publication
+        if: github.event_name == 'release' || inputs.mode == 'publish'
+        env:
+          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+
+          publish_url="https://chromewebstore.googleapis.com/v2/publishers/${CHROME_PUBLISHER_ID}/items/${CHROME_EXTENSION_ID}:publish"
+          response_file="$(mktemp)"
+          http_status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "$publish_url")"
+
+          if [[ "$http_status" -lt 200 || "$http_status" -ge 300 ]]; then
+            echo "Chrome Web Store review submission failed (HTTP ${http_status})." >&2
+            jq -r '.error.message // "No API error message returned"' "$response_file" >&2
+            exit 1
+          fi
+
+          submission_state="$(jq -r '.state // empty' "$response_file")"
+          case "$submission_state" in
+            PENDING_REVIEW | STAGED | PUBLISHED | PUBLISHED_TO_TESTERS) ;;
+            *)
+              echo "Chrome Web Store returned an unsuccessful submission state: ${submission_state:-unknown}." >&2
+              exit 1
+              ;;
+          esac
+
+          echo "Chrome Web Store review submission accepted (state: ${submission_state})."
+
+      - name: Report Chrome Web Store status
+        if: github.event_name == 'release' || inputs.mode == 'publish'
+        env:
+          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
+        run: |
+          set -euo pipefail
+
+          status_url="https://chromewebstore.googleapis.com/v2/publishers/${CHROME_PUBLISHER_ID}/items/${CHROME_EXTENSION_ID}:fetchStatus"
+          curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "$status_url" |
+            jq '{uploadState: .lastAsyncUploadState, publishedState: .publishedItemRevisionStatus.state, submittedState: .submittedItemRevisionStatus.state}'
