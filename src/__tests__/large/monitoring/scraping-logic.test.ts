@@ -503,6 +503,9 @@ test.describe("Toranoana Scraping Logic", () => {
     expect(scrapingResult).toBeTruthy();
     expect(scrapingResult.title).toBeTruthy();
     expect(scrapingResult.title.length).toBeGreaterThan(0);
+    expect(scrapingResult.circleName).toBeTruthy();
+    expect(scrapingResult.authors.length).toBeGreaterThan(0);
+    expect(scrapingResult.genre.length).toBeGreaterThan(0);
     expect(scrapingResult.url).toContain("toranoana.jp");
 
     console.log(`✓ Toranoana Title: ${scrapingResult.title}`);
