@@ -657,8 +657,8 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "header", // header where bar is inserted
       ".product-detail-desc-title span", // title
-      ".sub-circle .sub-p", // circle name
-      ".sub-name .sub-p", // author
+      '.product-detail-spec-table .product-detail-spec-alert > a[title]', // circle name
+      '.product-detail-spec-table a[name="spec-actor"]', // author
       ".product-detail-spec-table", // product info table
     ],
     isStatic: true,
