@@ -4,11 +4,11 @@
 
 一部のサイト（**Melonbooks / Surugaya**）は、**GitHub Actions のどのIPからも安定してアクセスできない**。
 
-| 接続元 | 結果 |
-|---|---|
-| 海外IP（`@global` 通常ジョブ、Wyoming等） | HTTP **403**（地理ブロック） |
+| 接続元                                               | 結果                                                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 海外IP（`@global` 通常ジョブ、Wyoming等）            | HTTP **403**（地理ブロック）                                                                     |
 | 日本IP（`@japan` ProtonVPN無料版・データセンターIP） | HTTP **403**（Cloudflare のデータセンターIPブロック）。**断続的** — 割り当てIP次第で通る日もある |
-| 手元の日本住宅用IP | HTTP **200**（正常） |
+| 手元の日本住宅用IP                                   | HTTP **200**（正常）                                                                             |
 
 つまり 403 の原因は **HTMLの構造変更ではなく、アクセス元IPの素性（住宅用 vs データセンター）** にある。`requiresJapanIP: true`（VPN日本IPジョブへ移動）だけでは解決しない。データセンターIPである限り Cloudflare は地理に関係なく403を返す。
 
@@ -16,20 +16,22 @@
 
 `SiteConfig.allowIpBlock: true` を付けたサイトは、ヘルスチェックが **HTTP 403** を返したとき、テスト**失敗ではなく skip** する。
 
-- 実装: `src/__tests__/large/monitoring/shared.ts` の `isEnvironmentalIpBlock()`
-- 適用: `static-sites.test.ts` / `spa-sites.test.ts` の各テスト（selector検証 × Chromium/Firefox、および挿入位置検証）
+また、HTTP 200 でも商品ページから既知の一時停止ページへ転送された場合は、DOM 構造を検証できない。`SiteConfig.transientUnavailableUrlPatterns` に URL パターンを明示したサイトでは、最終 URL が一致したときも skip する。現在は Surugaya の `https://cdn.suruga-ya.jp/maintenance/maintenance.html` を対象にしている。
+
+- 実装: `src/__tests__/support/monitoring-health-check.ts` の `isEnvironmentalIpBlock()` / `isTransientlyUnavailable()`
+- 適用: 403 判定は `static-sites.test.ts` / `spa-sites.test.ts`、メンテナンス URL 判定は `static-sites.test.ts` の各テスト（selector検証 × Chromium/Firefox、および挿入位置検証）
 - 現在 `allowIpBlock: true` のサイト: **Melonbooks**, **Surugaya**
 
-判断の根拠: **403 は `NETWORK_ERROR`（ページすら読めていない）であって `STRUCTURE_ERROR`（HTML構造の変更）ではない**。構造監視という本来の目的に対して 403 はノイズなので、200 が返ったときだけ selector を検証し、403 のときは skip する。
+判断の根拠: **403 や既知のメンテナンスページは、商品ページの `STRUCTURE_ERROR`（HTML構造の変更）ではない**。構造監視という本来の目的に対してこれらはノイズなので、商品ページを取得できたときだけ selector を検証する。
 
 ## ⚠️ リスク（今後の調査で必ず踏まえること）
 
 この skip は **以下のケースも黙って見逃す**:
 
 1. サイトが**永続的に**我々をブロックするようになった場合（一時的なIPブロックと区別できない）。
-2. **403 の裏でHTML構造が変わっていた**場合（403で skip するため selector 検証に到達しない）。
+2. **403 やメンテナンスページの裏でHTML構造が変わっていた**場合（skip するため selector 検証に到達しない）。
 
-したがって、**403 が継続するサイトについては、日本の住宅用IP（手元環境）から手動でアクセスし、selector が現行のままか確認すること**。CIの skip は「構造OK」を意味しない。
+したがって、**403 またはメンテナンス転送が継続するサイトについては、日本の住宅用IP（手元環境）から手動でアクセスし、selector が現行のままか確認すること**。CIの skip は「構造OK」を意味しない。
 
 ## 手動確認の例
 
