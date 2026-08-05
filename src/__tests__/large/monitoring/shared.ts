@@ -663,7 +663,7 @@ export const staticSites: SiteConfig[] = [
     ],
     isStatic: true,
     skipFirefox: false,
-    requiresJapanIP: false,
+    requiresJapanIP: true, // Overseas GitHub runners receive HTTP 503; Japan IP returns the product page
   },
 ];
 

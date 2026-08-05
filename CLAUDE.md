@@ -31,7 +31,7 @@ HTML要素が取得できなかったときのfallbackはデバッグを困難�
 ## 地理的IP制限による内容の違い
 - **CI環境**: GitHub Actions (Wyoming, US) では海外IPとして扱われる
 - **手元環境**: 日本のIPアドレスから接続
-- ⚠️ Melonbooks / Surugaya はCIのVPN日本IP（データセンターIP）もCloudflareに403でブロックされ、安定アクセス不可。403はskip扱いにしている（`allowIpBlock`）。**重要な前提・リスク・手動確認手順は [docs/monitoring-ip-block-limitation.md](docs/monitoring-ip-block-limitation.md) を参照**
+- ⚠️ Toranoana は海外 runner で503となるため `@japan` で監視する。Melonbooks / Surugaya はCIのVPN日本IP（データセンターIP）もCloudflareに403でブロックされ、安定アクセス不可。403はskip扱いにしている（`allowIpBlock`）。**重要な前提・リスク・手動確認手順は [docs/monitoring-ip-block-limitation.md](docs/monitoring-ip-block-limitation.md) を参照**
 
 ### FANZAサイトでの具体的な違い
 - **CI環境**: 英語の年齢認証ページ (`/en/age_check/`) が表示される

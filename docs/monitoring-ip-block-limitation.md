@@ -12,6 +12,8 @@
 
 つまり 403 の原因は **HTMLの構造変更ではなく、アクセス元IPの素性（住宅用 vs データセンター）** にある。`requiresJapanIP: true`（VPN日本IPジョブへ移動）だけでは解決しない。データセンターIPである限り Cloudflare は地理に関係なく403を返す。
 
+Toranoana は別の地域制限パターンで、海外の GitHub Actions runner には HTTP **503**、日本の接続元には HTTP **200** を返す。このため `requiresJapanIP: true` とし、`@japan` の VPN ジョブで監視する。Toranoana の 503 は `allowIpBlock` では skip しない。日本 VPN でも到達できなくなった場合は、構造監視ができない異常として検知する。
+
 ## このリポジトリでの扱い
 
 `SiteConfig.allowIpBlock: true` を付けたサイトは、ヘルスチェックが **HTTP 403** を返したとき、テスト**失敗ではなく skip** する。
