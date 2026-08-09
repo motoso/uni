@@ -1,102 +1,145 @@
 # Chrome Web Storeリリース手順
 
-このドキュメントでは、Chrome Web Store用のOAuth認証情報を更新し、GitHub Actionsから拡張機能をアップロードする手順を説明します。
+このドキュメントでは、Chrome Web Store API v2とサービスアカウントを使い、GitHub Actionsから拡張機能をアップロードして審査へ提出する手順を説明します。
 
 ## 前提条件
 
 - Chrome Web Storeの公開者アカウントへログインできる
-- Google Cloud ConsoleでOAuthクライアントを作成できる
+- Google Cloud Consoleでサービスアカウントを作成できる
 - `Web` Vaultの`uni`アイテムを1Password CLIから参照できる
-- `gh`、`op`、`curl`、`jq`をローカルで実行できる
+- `gh`と`op`をローカルで実行できる
 
 GitHub Actionsは、次の1Password参照から認証情報を読み込みます。
 
 ```text
-op://Web/uni/CHROME_CLIENT_ID
-op://Web/uni/CHROME_CLIENT_SECRET
-op://Web/uni/CHROME_REFRESH_TOKEN
+op://Web/uni/CHROME_PUBLISHER_ID
+op://Web/uni/CHROME_SERVICE_ACCOUNT_JSON
 ```
 
-## OAuth認証情報を発行する
+## サービスアカウントを設定する
 
-### 1. OAuthクライアントを作成する
+### 1. Google Cloudプロジェクトを選ぶ
 
-Google Cloud Consoleの「APIとサービス」から「認証情報」を開き、OAuth 2.0クライアントを作成します。
+1. [Google Cloud Console](https://console.cloud.google.com/)を開きます。
+2. 画面上部のプロジェクト選択から、uniの公開に使うプロジェクトを選びます。適切なプロジェクトがない場合は、`uni-chrome-web-store`などの名前で作成します。
 
-- アプリケーションの種類: ウェブ アプリケーション
-- 名前: `uni Chrome Web Store CI`
-- 承認済みのリダイレクトURI: `https://developers.google.com/oauthplayground`
+従来のOAuthクライアントと同じプロジェクトである必要はありません。
 
-作成後、Client IDとClient Secretを控えます。
+### 2. Chrome Web Store APIを有効にする
 
-### 2. Refresh tokenを発行する
+1. Google Cloud Consoleで「APIとサービス」→「ライブラリ」を開きます。
+2. `Chrome Web Store API`を検索します。
+3. 対象がChrome Web Store APIであることを確認し、「有効にする」を選択します。
 
-[OAuth 2.0 Playground](https://developers.google.com/oauthplayground/)を開き、次の操作を行います。
+### 3. サービスアカウントを作成する
 
-1. 右上の歯車アイコンを開く
-2. `Use your own OAuth credentials`を有効にする
-3. 作成したClient IDとClient Secretを入力する
-4. 次のスコープを入力する
+1. Google Cloud Consoleの[サービスアカウント一覧](https://console.cloud.google.com/iam-admin/serviceaccounts)を開きます。
+2. 「サービスアカウントを作成」を選択します。
+3. 次のように入力します。
 
     ```text
-    https://www.googleapis.com/auth/chromewebstore
+    サービスアカウント名: uni-chrome-web-store
+    説明: Publishes uni from GitHub Actions
     ```
 
-5. `Authorize APIs`を実行する
-6. Chrome Web Storeの公開者アカウントで許可する
-7. `Exchange authorization code for tokens`を実行する
-8. 表示されたRefresh tokenを控える
+4. 「作成して続行」を選択します。
+5. Google Cloud IAMロールは追加せず、「続行」または「完了」を選択します。
 
-必ず対象の拡張機能を所有しているGoogleアカウントで許可してください。
+作成後、次の形式のサービスアカウントメールアドレスを控えます。このメールアドレス自体は秘密情報ではありません。
+
+```text
+uni-chrome-web-store@PROJECT_ID.iam.gserviceaccount.com
+```
+
+Chrome Web Storeに対する権限はGoogle Cloud IAMではなく、次の手順でDeveloper Dashboardから付与します。
+
+### 4. Chrome Web Storeのpublisherへ登録する
+
+1. [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole/)を開き、uniを所有している公開者アカウントでログインします。
+2. 複数のpublisherに所属している場合は、uniを所有するpublisherへ切り替えます。
+3. 「Account」を開きます。
+4. サービスアカウント設定欄へ、前の手順で控えたメールアドレスを入力して保存します。
+
+publisherへ登録できるサービスアカウントは1つです。すでに別のサービスアカウントが登録されている場合は、置き換える前に他の公開処理で使われていないことを確認してください。
+
+### 5. Publisher IDを確認する
+
+Developer Dashboardの「Publisher」→「Settings」でPublisher IDを確認して控えます。Publisher IDと拡張機能IDは別の値です。
+
+uniの拡張機能IDは次の値です。
+
+```text
+jdihchpmnchcjigdmecmjieeanhcfbpm
+```
+
+### 6. JSON鍵を作成する
+
+1. Google Cloud Consoleのサービスアカウント一覧へ戻ります。
+2. 作成した`uni-chrome-web-store`を選択します。
+3. 「キー」タブを開きます。
+4. 「鍵を追加」→「新しい鍵を作成」を選択します。
+5. キーのタイプとして「JSON」を選択し、「作成」を選択します。
+
+ダウンロードされたJSONファイルは、サービスアカウントとして認証できる秘密鍵です。Gitへ追加したり、Issue、Pull Request、チャット、CIログへ内容を貼り付けたりしないでください。
+
+詳細はChrome公式の[サービスアカウント設定手順](https://developer.chrome.com/docs/webstore/service-accounts)を参照してください。
 
 ## 1Passwordを更新する
 
-新しいOAuthクライアントを作成した場合は、Client ID、Client Secret、Refresh tokenをまとめて更新します。
+1Passwordアプリで`Web` Vaultの`uni`アイテムを開き、次の2つのTextフィールドを追加します。
+
+| フィールド名                  | 値                                        |
+| ----------------------------- | ----------------------------------------- |
+| `CHROME_PUBLISHER_ID`         | Developer Dashboardで確認したPublisher ID |
+| `CHROME_SERVICE_ACCOUNT_JSON` | ダウンロードしたJSONファイルの内容全体    |
+
+JSON鍵は先頭の`{`から最後の`}`まで、改行を含む値のまま保存してください。シェル引数やログへ鍵を露出させないため、CLIより1Passwordアプリでの編集を推奨します。
+
+保存後、ダウンロードフォルダなどに残ったJSONファイルを安全に削除します。JSON鍵を再表示する必要がある運用は避け、漏洩した可能性がある場合はGoogle Cloud Consoleで直ちに無効化して新しい鍵へ交換してください。
+
+### 1Passwordの設定を確認する
+
+次のコマンドは秘密値を表示せず、2つの参照が存在することとJSON鍵の基本構造を確認します。
 
 ```bash
-read -r "CLIENT_ID?Client ID: "
-read -rs "CLIENT_SECRET?Client Secret: "
-echo
-read -rs "REFRESH_TOKEN?Refresh token: "
-echo
-
-op item edit "uni" --vault "Web" \
-  "CHROME_CLIENT_ID=$CLIENT_ID" \
-  "CHROME_CLIENT_SECRET=$CLIENT_SECRET" \
-  "CHROME_REFRESH_TOKEN=$REFRESH_TOKEN"
-```
-
-## 1Passwordの値をローカルで検証する
-
-GitHub Actionsを実行する前に、1Passwordに保存した3つの値を使ってアクセストークンを取得できることを確認します。次のコマンドは秘密値を表示せず、検証結果だけを出力します。
-
-```bash
-CLIENT_ID="$(op read 'op://Web/uni/CHROME_CLIENT_ID')" \
-CLIENT_SECRET="$(op read 'op://Web/uni/CHROME_CLIENT_SECRET')" \
-REFRESH_TOKEN="$(op read 'op://Web/uni/CHROME_REFRESH_TOKEN')" \
 zsh -c '
-curl -sS https://oauth2.googleapis.com/token \
-  --data-urlencode "client_id=$CLIENT_ID" \
-  --data-urlencode "client_secret=$CLIENT_SECRET" \
-  --data-urlencode "refresh_token=$REFRESH_TOKEN" \
-  --data-urlencode "grant_type=refresh_token" |
-jq "{ok: has(\"access_token\"), error, error_description}"
+set -euo pipefail
+publisher_id="$(op read "op://Web/uni/CHROME_PUBLISHER_ID")"
+service_account_json="$(op read "op://Web/uni/CHROME_SERVICE_ACCOUNT_JSON")"
+
+[[ -n "$publisher_id" ]]
+printf "%s" "$service_account_json" | jq -e '\''
+  .type == "service_account" and
+  (.client_email | type == "string" and length > 0) and
+  (.private_key | type == "string" and startswith("-----BEGIN PRIVATE KEY-----")) and
+  (.token_uri == "https://oauth2.googleapis.com/token")
+'\'' >/dev/null
+
+echo "Chrome Web Store service account configuration: valid"
 '
 ```
 
-成功時は次の結果になります。
+成功時は次の1行だけが表示されます。
 
-```json
-{
-    "ok": true,
-    "error": null,
-    "error_description": null
-}
+```text
+Chrome Web Store service account configuration: valid
 ```
 
-`invalid_grant`が返る場合は、Refresh tokenが失効しているか、発行時と異なるClient IDまたはClient Secretを使用しています。3つの値を同じOAuthクライアントから再発行してください。
+API v2移行後の本番公開が成功したら、不要になった旧`CHROME_CLIENT_ID`、`CHROME_CLIENT_SECRET`、`CHROME_REFRESH_TOKEN`フィールドを削除できます。
 
 ## GitHub Actionsを実行する
+
+### 認証と権限だけを確認する
+
+GitHub Actionsの`Publish Chrome Extension`を手動実行し、`mode`で`validate`を選択します。`validate`は既定値です。
+
+このモードではサービスアカウント認証と対象拡張機能へのアクセスだけを確認します。ZIPの作成、アップロード、審査提出は実行しないため、公開済みバージョンと同じバージョンでも安全に実行できます。
+
+`Preflight Chrome Web Store access`が成功し、以降の公開ステップがskipされていることを確認してください。
+
+### 新しいバージョンを公開する
+
+通常は、バージョンを更新したGitHub Releaseをpublishすると公開処理が自動実行されます。手動で公開する必要がある場合に限り、`mode`で`publish`を明示的に選択してください。同じバージョンを再アップロードすることはできません。
 
 リリースに紐づく失敗ジョブを再実行する場合は、次のコマンドを使います。
 
@@ -105,16 +148,13 @@ gh run rerun RUN_ID --failed --repo motoso/uni
 gh run watch RUN_ID --repo motoso/uni --exit-status
 ```
 
-`Publish to Chrome Web Store`ステップが成功したことを確認します。
+次のステップが成功したことを確認します。
 
-現行の`.github/workflows/publish-chrome.yml`は、Chrome Web StoreへZIPファイルをアップロードします。Actionの実行ログでは`action: upload`として動作します。CI成功後、Chrome Web Store Developer Dashboardで審査提出と公開状態を確認してください。
+- `Preflight Chrome Web Store access`: 認証、publisher ID、拡張機能へのアクセスを検証
+- `Upload to Chrome Web Store`: API v2でZIPファイルをアップロード
+- `Submit for review and publication`: 審査へ提出し、承認後の公開を予約
+- `Report Chrome Web Store status`: 提出直後の状態をログへ出力
 
-## 後片付け
+APIの`publish`は審査通過後の公開までを要求します。CI成功は審査通過や公開完了を意味しないため、Developer Dashboardでも最終状態を確認してください。API v2の各操作はChrome公式の[API利用手順](https://developer.chrome.com/docs/webstore/using-api)を参照してください。
 
-シェル変数から認証情報を削除します。
-
-```bash
-unset CLIENT_ID CLIENT_SECRET REFRESH_TOKEN
-```
-
-Client SecretやRefresh tokenを、Issue、Pull Request、CIログへ貼り付けないでください。
+サービスアカウントのJSON鍵を、Issue、Pull Request、CIログへ貼り付けないでください。鍵が漏洩した場合はGoogle Cloud Consoleで直ちに無効化し、新しい鍵へ交換してください。
