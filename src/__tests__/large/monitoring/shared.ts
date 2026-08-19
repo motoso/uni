@@ -65,20 +65,21 @@ export async function handleAgeVerification(page: Page): Promise<void> {
         'a:has-text("はい")',
       ];
 
-      let buttonClicked = false;
-      for (const selector of ageCheckSelectors) {
-        try {
+      const ageCheckButton = await Promise.any(
+        ageCheckSelectors.map(async (selector) => {
           const button = page.locator(selector).first();
-          if (await button.isVisible({ timeout: 2000 })) {
-            console.log(`✅ Found age verification button: ${selector}`);
-            await button.click();
-            buttonClicked = true;
-            break;
-          }
-        } catch (error) {
-          // Continue to next selector
-          console.log(`❌ Button not found: ${selector}`);
-        }
+          await button.waitFor({ state: "visible", timeout: initialTimeout });
+          return { button, selector };
+        }),
+      ).catch(() => undefined);
+
+      let buttonClicked = false;
+      if (ageCheckButton) {
+        console.log(
+          `✅ Found age verification button: ${ageCheckButton.selector}`,
+        );
+        await ageCheckButton.button.click();
+        buttonClicked = true;
       }
 
       if (!buttonClicked) {
@@ -635,7 +636,7 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "header", // header where bar is inserted
       ".product-detail-desc-title span", // title
-      '.product-detail-spec-table .product-detail-spec-alert > a[title]', // circle name
+      ".product-detail-spec-table .product-detail-spec-alert > a[title]", // circle name
       '.product-detail-spec-table a[name="spec-actor"]', // author
       ".product-detail-spec-table", // product info table
     ],
