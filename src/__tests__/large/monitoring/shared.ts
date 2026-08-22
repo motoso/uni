@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { bypassDmmAgeCheckWithCookie } from "../../support/dmm-age-verification";
 
 export {
   isEnvironmentalIpBlock,
@@ -100,12 +101,22 @@ export async function handleAgeVerification(page: Page): Promise<void> {
       }
 
       if (!buttonClicked) {
-        console.log(
-          "❌ No age verification button found, checking for auto-redirect...",
-        );
-        // CI環境では自動リダイレクトがある場合を考慮してしばらく待機
-        if (isCI) {
-          await page.waitForTimeout(5000);
+        if (await bypassDmmAgeCheckWithCookie(page)) {
+          // The VPN occasionally returns the age-check shell without its
+          // controls. The monitoring target is the product DOM, so reproduce
+          // the accepted gate state and continue to the validated DMM rurl.
+          console.log(
+            "⚠️ Age verification controls unavailable; using DMM age cookie fallback",
+          );
+          console.log("✅ DMM age cookie fallback navigation completed");
+        } else {
+          console.log(
+            "❌ No age verification button or safe DMM redirect found, checking for auto-redirect...",
+          );
+          // CI環境では自動リダイレクトがある場合を考慮してしばらく待機
+          if (isCI) {
+            await page.waitForTimeout(5000);
+          }
         }
       } else {
         console.log("✅ Age verification button clicked");
