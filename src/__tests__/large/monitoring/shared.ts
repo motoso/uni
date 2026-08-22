@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export {
   isEnvironmentalIpBlock,
@@ -64,25 +64,30 @@ export async function handleAgeVerification(page: Page): Promise<void> {
         },
       ]);
 
-      // The age-gate markup can be rendered asynchronously. Poll in selector
-      // order so the intended control wins, without leaving parallel waits
-      // running after one candidate has been selected.
-      const ageCheckDeadline = Date.now() + initialTimeout;
       let ageCheckButton: (typeof ageCheckCandidates)[number] | undefined;
-      while (Date.now() < ageCheckDeadline && !ageCheckButton) {
-        for (const candidate of ageCheckCandidates) {
-          if (await candidate.locator.isVisible()) {
-            ageCheckButton = candidate;
-            break;
-          }
-        }
-
-        if (!ageCheckButton) {
-          const remaining = ageCheckDeadline - Date.now();
-          if (remaining > 0) {
-            await page.waitForTimeout(Math.min(250, remaining));
-          }
-        }
+      try {
+        // The age-gate markup can be rendered asynchronously. Poll in
+        // selector order so the intended control wins, without leaving
+        // parallel waits running after one candidate has been selected.
+        await expect
+          .poll(
+            async () => {
+              ageCheckButton = undefined;
+              for (const candidate of ageCheckCandidates) {
+                if (await candidate.locator.isVisible()) {
+                  ageCheckButton = candidate;
+                  break;
+                }
+              }
+              return ageCheckButton;
+            },
+            { timeout: initialTimeout },
+          )
+          .toBeDefined();
+      } catch {
+        // No button appeared within the existing timeout; an automatic
+        // redirect may still complete below.
+        ageCheckButton = undefined;
       }
 
       let buttonClicked = false;
