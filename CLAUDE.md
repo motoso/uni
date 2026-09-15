@@ -35,6 +35,6 @@ Large tests contact external sites and are not the standard PR check.
 
 ## Task-specific guidance
 
-- PR creation, updates, merges, or releases: read [development workflows](docs/development-workflows.md).
+- PR creation, updates, merges, or releases: use the [uni-delivery skill](.claude/skills/uni-delivery/SKILL.md).
 - External-site monitoring failures or CI/local DOM differences: read [monitoring and IP restrictions](docs/monitoring-ip-block-limitation.md).
 - Changes to `main` go through a PR; do not push directly to it.

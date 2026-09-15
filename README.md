@@ -223,4 +223,6 @@ npm run test:failed-only
 ### 開発エージェント向けの指示
 
 共通指示は [AGENTS.md](AGENTS.md)、PR・リリース時の手順は
-[PR・リリース運用](docs/development-workflows.md)を参照してください。
+[uni-deliveryスキル](.claude/skills/uni-delivery/SKILL.md)を参照してください。
+スキルの実体は `.claude/skills/uni-delivery/`、Codex用の
+`.agents/skills/uni-delivery` はそこへのシンボリックリンクです。
