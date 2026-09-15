@@ -1,228 +1,40 @@
-# リリース
-リリースはfirefoxとChrome両方を行います
-manifest.jsonとpackage.jsonを更新した上でリリースのPRを作り、masterブランチにマージします
-ストアへのリリース手順は https://scrapbox.io/motoso-uni/%E9%96%8B%E7%99%BA%E8%80%85%E5%90%91%E3%81%91%E3%81%AE%E6%83%85%E5%A0%B1 を参照してください
+# Project instructions
 
-# 開発の作法
-- masterにpushしてはいけません。masterへの変更は必ずPRを作成してください
-- commitの前には必ずfmtすること
-- テスト戦略は [TEST_STRATEGY.md](TEST_STRATEGY.md) と [docs/adr/001-test-strategy-and-tdd.md](docs/adr/001-test-strategy-and-tdd.md) に従うこと
-- `npm test` / `npm run test:pr` はSmallテストのみ。外部サイト監視を含める場合は明示的に `npm run test:large*` または `npm run test:all` を使うこと
-- 新しいロジックは可能な限りSmallに寄せ、Red-Green-Refactorでテストファーストにすること
-- 実サイトで見つけたスクレイピング不具合は、可能ならDocument/Element fixtureのSmallテストに還元してから修正すること
-- 外部サーバーとのテストを確認する際には、時間節約のため失敗したものに限って実行すること
-- PR作成時にGitHub Actions上のClaude Code自動レビューは走りません。必要なレビューは `subagent-consultation` スキルを使って依頼し、criticalな指摘があれば修正してpushすること。
+## Project
 
-# PR作成・マージの手順
-- PR作成とマージは `gh` を使う。GitHub connector は branch push 後でも `Resource not accessible by integration` でPR作成に失敗することがある。
-- Codex sandbox内では、ネットワーク制限により `gh auth status` や `gh repo view` が認証エラー・DNSエラーのように見えることがある。認証不良と判断する前に、実際に必要な `gh` コマンドを権限昇格付きで再実行する。
-- commit/push後は、PR本文を `/private/tmp` にMarkdownで書き出してから次の流れで進める：
-  1. `gh pr create --repo motoso/uni --base main --head <branch> --title "<title>" --body-file /private/tmp/<body>.md`
-  2. `gh pr view <number> --repo motoso/uni --json number,state,mergeable,isDraft,headRefOid,url`
-  3. `gh pr checks <number> --repo motoso/uni`
-  4. CIが通ったら `gh pr merge <number> --repo motoso/uni --merge --delete-branch`
-# HTML要素が変わってスクレイピングに失敗する場合
-対象サイトのHTMLをplaywright等で確認し、適切な情報が取れるようにscrapingロジックを書き直してください
-セレクターは想像で書かずに、実際のHTMLを見て確認すること。またfallbackは設定しないこと（なくなったら実際のサイトに接続するテストが落ちるのが理想）
-HTML要素が取得できなかったときのfallbackはデバッグを困難にするので必須の場合以外追加しないこと。常にDOMを確認して存在するパターンを書のが正解です
+uni is a Chrome / Firefox extension that creates Cosense pages from product pages.
+Site-specific entrypoints in `entrypoints/` use `src/contentScript/` and
+`src/scraping/` to read the DOM; Product classes normalize metadata for the UI
+and Scrapbox integration.
 
-# CI環境と手元環境の違い
+WXT builds both browsers. Browser-specific manifest settings live in
+`wxt.config.ts`; manifests under `dist/` are generated output.
 
-## 地理的IP制限による内容の違い
-- **CI環境**: GitHub Actions (Wyoming, US) では海外IPとして扱われる
-- **手元環境**: 日本のIPアドレスから接続
-- ⚠️ Toranoana は海外 runner で503となるため `@japan` で監視する。Melonbooks / Surugaya はCIのVPN日本IP（データセンターIP）もCloudflareに403でブロックされ、安定アクセス不可。403はskip扱いにしている（`allowIpBlock`）。**重要な前提・リスク・手動確認手順は [docs/monitoring-ip-block-limitation.md](docs/monitoring-ip-block-limitation.md) を参照**
+## Local development
 
-### FANZAサイトでの具体的な違い
-- **CI環境**: 英語の年齢認証ページ (`/en/age_check/`) が表示される
-  - ボタンテキスト: "I Agree", "Agree", "Yes" など
-- **手元環境**: 日本語の年齢認証ページが表示される
-  - ボタンテキスト: "はい" など
+Use the Node.js and npm versions pinned in `.mise.toml` (`mise install`).
+Install dependencies with `npm ci`.
 
-### 対応方法
-年齢認証処理では両方の言語パターンを考慮する必要がある：
-```typescript
-const ageCheckSelectors = [
-  // English patterns (for CI environment)
-  'text=Agree', 'text=I Agree', 'text=Yes',
-  // Japanese patterns (for local environment)
-  'text=はい', 'button:has-text("はい")'
-];
-```
+- `npm run dev`: Chrome development server; `npm run dev:firefox` for Firefox.
+- `npm run build`: Chrome production build; `npm run build:firefox` for Firefox.
+- `npm run fmt`: format TypeScript / TSX / SCSS before committing changes to them.
+- `npm test`: Small tests only, with no network, filesystem, or real browser.
+- `npm run dep:check`: architecture dependency boundaries.
 
-## CI環境でのDOM構造デバッグ
+For logic changes, use Small tests and Red-Green-Refactor. When adding or
+changing tests, use [TEST_STRATEGY.md](TEST_STRATEGY.md) for size boundaries and
+commands; [ADR-001](docs/adr/001-test-strategy-and-tdd.md) explains the rationale.
+Local Small tests can be run and failures caused by the change fixed without
+asking for approval at each step.
 
-### 失敗時の調査手順
-1. **専用デバッグテストの作成**:
-   - `fanza-debug.test.ts` のような詳細DOM分析テストを作成
-   - CI環境でのみ実行するように `playwright.config.ts` を設定
+For scraper, selector, age-check, or site-specific ContentScript changes,
+inspect real HTML before changing selectors and run targeted Large tests.
+Turn reproducible parsing bugs into Small fixtures where practical. Avoid
+speculative selectors and unnecessary fallbacks that hide site changes.
+Large tests contact external sites and are not the standard PR check.
 
-2. **GitHub Actionsログの確認**:
-   ```bash
-   gh run list --limit 5
-   gh run view [RUN_ID] --log | grep -A 50 "🔍 Debugging"
-   ```
+## Task-specific guidance
 
-3. **DOM構造の分析**:
-   - ボタン要素の存在確認
-   - テキストマッチング要素の検索
-   - フォーム要素の分析
-   - HTML構造の詳細出力
-
-### デバッグテストのベストプラクティス
-- 実際のHTMLスニペットを出力
-- ボタン要素の詳細情報（tagName, textContent, className）を記録
-- セレクター試行の成功/失敗を明確にログ出力
-- genericなfallbackパターンは避ける（デバッグが困難になるため）
-
-### 専用デバッグワークフローの活用
-
-#### デバッグ専用CIワークフロー
-`.github/workflows/debug-ci-environment.yml` で手動実行可能なデバッグ専用ワークフローを提供しています。
-
-##### 実行方法
-1. GitHubリポジトリの「Actions」タブに移動
-2. 「Debug CI Environment」ワークフローを選択
-3. 「Run workflow」をクリック
-4. デバッグターゲットを選択して実行
-
-##### デバッグターゲット
-- **fanza**: FANZAサイトのみ
-- **amazon**: Amazonサイトのみ
-- **dlsite / bookwalker / melonbooks / toranoana / surugaya / fc2**: 各サービス個別
-- **all-spa**: 全SPAサイト
-- **all-static**: 全静的サイト
-
-##### 柔軟なテスト実行
-- **Custom test pattern**: 独自のgrep形式パターンでテスト選択可能
-- **Test type**: debug, access-check, spa-sites, static-sites, scraping-logic から選択
-
-##### 使用例
-```bash
-# FANZAサイトの詳細デバッグテストを実行
-Debug target: fanza, Test type: debug
-
-# 特定パターンのテストを実行
-Custom test pattern: "FANZA Video|Amazon.*English"
-```
-
-#### デバッグテストの詳細機能
-`src/__tests__/large/monitoring/fanza-debug.test.ts` の機能：
-- HTML構造の詳細分析（文字数、プレビュー）
-- ボタン要素の全探索と詳細情報出力
-- テキストベースマッチング要素の検索
-- フォーム要素の分析
-- 年齢認証セレクターの体系的試行
-- 成功したセレクターの詳細情報出力
-
-このテストは通常は無効化されているが、デバッグワークフローでは自動的に有効化される。
-
-## CI環境での海外版FANZAサイト挙動
-
-### CI環境（Wyoming, US IP）でのアクセスパターン
-
-#### 1. 年齢認証段階
-- **英語版年齢認証ページ**: `/en/age_check/` が表示される
-- **ボタンテキスト**: "I Agree", "Agree", "Yes" など（日本語の「はい」ではない）
-- **現在の対応状況**: ✅ 修正済み（`text=Agree`セレクターで対応完了）
-
-#### 2. 年齢認証成功後の挙動
-CI環境では年齢認証突破後に以下の2つのパターンに分岐：
-
-##### パターンA: ログインページリダイレクト（大部分のケース）
-```
-年齢認証成功 → https://accounts.dmm.co.jp/service/login/password/=
-```
-- **頻度**: 約80-90%のケース
-- **原因**: 海外IPに対するログイン認証要求
-- **制限事項**: ログインページでは商品情報のスクレイピング不可
-- **現在の判定**: ❌ 「年齢認証失敗」として誤判定される
-
-##### パターンB: 直接商品ページアクセス（稀なケース）
-```
-年齢認証成功 → https://video.dmm.co.jp/av/content/?id=xxxxx
-```
-- **頻度**: 約10-20%のケース
-- **結果**: ✅ 正常にスクレイピング可能
-- **判定**: 現在でも正常に成功判定される
-
-#### 3. 地理的制限による影響
-- **日本IP（手元環境）**: 年齢認証のみでアクセス可能
-- **海外IP（CI環境）**: 年齢認証 + ログイン認証が基本的に必要
-- **商用利用制限**: 海外IPからの自動アクセスに対する追加制限
-
-### テスト成功/失敗の判定基準
-
-#### 現在の問題
-`handleAgeVerification`関数の107行目：
-```typescript
-if (finalUrl.includes('age_check') || finalUrl.includes('login')) {
-  throw new Error(`Age verification failed - still on auth page: ${finalUrl}`);
-}
-```
-この条件により、年齢認証成功後のログインページも「失敗」として扱われる。
-
-#### 推奨される対応方針
-
-##### オプション1: ログインページを部分成功として扱う
-- 年齢認証突破は成功として認識
-- ログインページでの基本DOM要素（タイトル、フォーム）を検出
-- 商品情報は取得できないが「アクセス可能」として判定
-
-##### オプション2: CI環境での制限を明示
-- 海外IP制限によるログイン要求を正常動作として文書化
-- CI環境では「年齢認証突破まで」を成功とする基準に変更
-- 商品情報スクレイピングは地理的制限により期待しない
-
-### CI環境でのテスト成功/失敗基準
-
-#### 現在の基準（問題あり）
-```typescript
-// 年齢認証成功後のログインページも「失敗」として扱ってしまう
-if (finalUrl.includes('age_check') || finalUrl.includes('login')) {
-  throw new Error(`Age verification failed - still on auth page: ${finalUrl}`);
-}
-```
-
-#### 提案する新基準
-
-##### レベル1: 完全成功（理想的）
-- 年齢認証突破 ✅
-- 商品ページアクセス ✅
-- 商品情報スクレイピング可能 ✅
-- **判定**: テスト成功
-
-##### レベル2: 部分成功（CI環境での標準）
-- 年齢認証突破 ✅
-- ログインページ到達 ⚠️
-- 商品情報スクレイピング不可 ❌
-- **判定**: 地理的制限により部分成功（テスト成功とみなす）
-
-##### レベル3: 失敗
-- 年齢認証突破できない ❌
-- 年齢認証ページから進めない ❌
-- **判定**: テスト失敗
-
-#### 実装時の判定ロジック
-```typescript
-// 推奨される判定ロジック
-if (finalUrl.includes('age_check')) {
-  // 年齢認証ページから進めない = 真の失敗
-  throw new Error(`Age verification failed - still on age check page: ${finalUrl}`);
-} else if (finalUrl.includes('login')) {
-  // ログインページ = 年齢認証成功、地理的制限による部分成功
-  console.log('✅ Age verification succeeded, but login required due to geographic restrictions');
-  // 基本的なログインページ要素の確認
-  await page.waitForSelector('input[type="password"], form', { timeout: 5000 });
-} else {
-  // 商品ページ = 完全成功
-  console.log('✅ Full access succeeded');
-}
-```
-
-### 将来のメンテナンス指針
-1. **年齢認証修正時**: 英語と日本語両方のパターンを考慮
-2. **新サイト対応時**: 地理的IP制限の有無を事前確認
-3. **CI失敗調査時**: ログインページ到達は「部分成功」として評価
-4. **デバッグ時**: 専用デバッグワークフローでDOM構造を詳細分析
-5. **テスト基準更新時**: 3段階の成功レベルを適用
+- PR creation, updates, merges, or releases: read [development workflows](docs/development-workflows.md).
+- External-site monitoring failures or CI/local DOM differences: read [monitoring and IP restrictions](docs/monitoring-ip-block-limitation.md).
+- Changes to `main` go through a PR; do not push directly to it.

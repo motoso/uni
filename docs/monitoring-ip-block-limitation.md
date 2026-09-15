@@ -46,7 +46,41 @@ curl -s -o /dev/null -w "Melonbooks HTTP: %{http_code}\n" \
 
 200 が返ったら、ブラウザ/Playwright で実際のDOMを開き、`shared.ts` の該当 `selectors` が存在するか確認する。
 
+## CIと手元でDOMが異なる場合
+
+接続元によって年齢認証の言語、ログイン要求、リダイレクト先が変わる場合がある。
+FANZAでは日本語・英語の年齢認証ページが観測されている。過去のボタン名や
+特定runnerの所在地を前提にせず、失敗した環境で最終URLと実DOMを確認する。
+
+現行の `handleAgeVerification()`（`src/__tests__/large/monitoring/shared.ts`）は
+年齢認証・ログインページに残った場合に失敗とする。ログインページに到達しても
+商品DOMを検証したことにはならない。環境要因を切り分け、スクレイピング成功と区別する。
+
+調査時は失敗したサイト・テストに絞る。抽出済みの失敗は `npm run test:failed-only`、
+直接指定する場合は `npm run test:large -- --grep "<test pattern>"` を使う。
+対象を変更した場合は、その変更を検証するテストも実行する。
+
+[Debug CI Environment](../.github/workflows/debug-ci-environment.yml) は手動実行用。
+`debug_target` でサイト、`test_type` で調査対象を選ぶ。`test_pattern` を指定すると
+そちらが優先される。利用できる選択肢と実行内容はworkflowを参照する。
+このworkflowはVPNを設定しないため、日本IPでの再現確認には別途適切な接続元が必要。
+
+既存の `fanza-debug.test.ts` / `amazon-debug.test.ts` と実行ログ・スクリーンショットを
+使い、最終URL、HTML、ボタン要素、selectorの成否を調べる。
+通常の `playwright.config.ts` のテスト対象を狭める必要はない。
+
+## VPN監視の設定
+
+[Daily Tests](../.github/workflows/daily-tests.yml) は通常接続の `@global` と
+日本VPN経由の `@japan` を分けて実行する。サイトの分類は `shared.ts` の
+`requiresJapanIP` を参照する。VPN対象はFANZAに限定しない。
+
+VPNはGluetun / ProtonVPNを使用する。設定時はProtonVPNでWireGuard設定を生成し、
+PrivateKeyをGitHub Secret `PROTONVPN_WIREGUARD_PRIVATE_KEY` に保存する。
+接続設定・プロキシのポートと環境変数はworkflowを参照する。
+日次以外に実行するときは `Daily Tests (Large & VPN)` を手動実行する。
+VPNで日本IPになっても、上記のデータセンターIPブロックは残り得る。
+
 ## 関連
 
-- 地理的IP制限の背景は `CLAUDE.md`（CI環境と手元環境の違い）も参照。
 - Amazon は別要因（ボット検出/CAPTCHA）で監視対象外。`docs/amazon-vpn-test-investigation.md` 参照。
