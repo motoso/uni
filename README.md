@@ -145,14 +145,14 @@ Chrome Web StoreへのアップロードとOAuth認証情報の更新につい�
 
 ### Browser Differences
 
-この拡張機能は `wext-manifest-loader` を使用してブラウザ間の差異を吸収しています：
+この拡張機能はWXTを使用し、`wxt.config.ts` と `entrypoints/` からブラウザ別のmanifestを生成します：
 
 **Chrome (Manifest V3)**
 - `action` フィールドを使用
 - `background.service_worker` でService Worker実行
 
 **Firefox (Manifest V3)**  
-- `browser_action` フィールドを使用
+- `action` フィールドを使用
 - `background.scripts` でEvent Pages実行
 
 ### Cross-browser API Compatibility
@@ -187,7 +187,7 @@ npm run test:extract-failed-from-ci [RUN_ID]
 # 3. Run only the failed tests locally
 npm run test:failed-only
 
-# 4. Fix issues and commit - CI will run all tests for safety
+# 4. Fix issues and commit - PR CI runs Small tests; Daily CI monitors external sites
 ```
 
 #### Alternative: Manual Log Extraction
@@ -204,231 +204,25 @@ npm run test:failed-only
 
 #### Requirements
 - **GitHub CLI**: Install with `gh auth login` for CI log extraction
-- **Local Development Only**: CI always runs all tests to ensure no regressions
+- **Local Development Only**: Failed-test extraction selects Large tests for targeted reruns
 
 #### How It Works
 - `scripts/extract-from-ci.js` fetches CI failure logs via GitHub CLI
 - `scripts/extract-failed-tests.js` parses Playwright output and extracts failed test names
 - Failed test patterns are saved to `failed-tests-patterns.txt`
 - `npm run test:failed-only` reads these patterns and runs only matching tests
-- **CI Safety**: All workflows run complete test suites to maintain reliability
+- **CI**: PR CI runs Small tests, formatting, dependency checks, and a Chrome build; Daily CI runs Large monitoring tests
 
 ### CI Environment vs Local Environment
 
-テストが手元では成功するがCI環境で失敗する場合、地理的IP制限による内容の違いが原因の可能性があります。
+外部サイト監視でCIと手元の結果が異なる場合は、
+[監視のIP制限・DOM調査・VPN設定](docs/monitoring-ip-block-limitation.md)を参照してください。
+対象サイトを絞った調査には [Debug CI Environment](.github/workflows/debug-ci-environment.yml)、
+日本VPNを含む監視には [Daily Tests](.github/workflows/daily-tests.yml) を使用します。
 
-#### 主な違い
-- **CI環境 (GitHub Actions, Wyoming, US)**: 海外IPとして扱われ、英語コンテンツが表示される
-- **手元環境 (日本)**: 日本語コンテンツが表示される
+### 開発エージェント向けの指示
 
-#### FANZA年齢認証の例
-```typescript
-// CI環境: 英語年齢認証ページ (/en/age_check/)
-// ボタンテキスト: "I Agree", "Agree", "Yes"
-
-// 手元環境: 日本語年齢認証ページ
-// ボタンテキスト: "はい"
-```
-
-### CI環境でのDOMデバッグ方法
-
-#### 1. 専用デバッグテストの作成
-```bash
-# 失敗しているサイトのみの詳細デバッグテストを作成
-npm run test:quick  # FANZA Video, FANZA Doujin, Amazon Englishのみ実行
-```
-
-#### 2. CI設定の一時変更
-`playwright.config.ts` でCI環境用の設定を調整：
-```typescript
-// デバッグテストのみ実行
-testMatch: process.env.CI ? '**/__tests__/large/monitoring/fanza-debug.test.ts' : '**/__tests__/large/**/*.test.ts'
-```
-
-#### 3. GitHub Actionsログの確認
-```bash
-# 最新のテスト結果を確認
-gh run list --limit 5
-
-# 特定のテスト実行のログを確認
-gh run view [RUN_ID] --log | grep -A 50 "🔍 Debugging"
-
-# DOM分析結果を確認
-gh run view [RUN_ID] --log | grep -A 10 "BUTTON ELEMENTS FOUND"
-```
-
-#### 4. DOM構造分析のポイント
-- 実際のHTML構造の確認（想像ではなく実際のDOM）
-- ボタン要素の詳細情報取得（tagName, textContent, className, id）
-- セレクター試行の成功/失敗ログ
-- Genericなfallbackパターンの回避（デバッグが困難になるため）
-
-#### 5. デバッグテストの実装例
-```typescript
-// DOM構造の詳細分析
-const buttons = await page.evaluate(() => {
-  const buttonElements = Array.from(document.querySelectorAll('button, a[role="button"], input[type="submit"]'));
-  return buttonElements.map(btn => ({
-    tagName: btn.tagName,
-    textContent: btn.textContent?.trim() || '',
-    className: btn.className,
-    id: btn.id
-  }));
-});
-
-console.log(`🔘 BUTTON ELEMENTS FOUND (${buttons.length}):`);
-buttons.forEach((btn, idx) => {
-  console.log(`   [${idx}] ${btn.tagName}: "${btn.textContent}" (class: "${btn.className}", id: "${btn.id}")`);
-});
-```
-
-## Geographic IP Restrictions & CI Environment Behavior
-
-### FANZA Sites Specific Behavior
-
-CI環境（GitHub Actions, Wyoming, US）でのFANZAサイトアクセスには地理的制限が適用されます。
-
-#### Access Pattern Analysis
-
-##### 1. Age Verification Stage
-- **Local Environment (Japan IP)**: Japanese age verification page with "はい" button
-- **CI Environment (US IP)**: English age verification page (`/en/age_check/`) with "I Agree", "Agree" buttons
-
-##### 2. Post-Age Verification Behavior
-
-**Pattern A: Login Redirect (80-90% of cases in CI)**
-```
-Age Verification Success → https://accounts.dmm.co.jp/service/login/password/=
-```
-- **Cause**: Overseas IP requires additional login authentication
-- **Limitation**: Product scraping not possible on login page
-- **Current Status**: Incorrectly treated as "age verification failure"
-
-**Pattern B: Direct Content Access (10-20% of cases in CI)**
-```
-Age Verification Success → https://video.dmm.co.jp/av/content/?id=xxxxx
-```
-- **Result**: Normal scraping possible
-- **Status**: Works correctly with current implementation
-
-#### Geographic Restrictions Impact
-
-| Environment | IP Location | Age Verification | Additional Auth | Scraping Capability |
-|-------------|-------------|------------------|-----------------|-------------------|
-| Local | Japan | Japanese (はい) | Not required | ✅ Full access |
-| CI | Wyoming, US | English (Agree) | Login required | ⚠️ Limited access |
-
-#### Test Success Criteria Considerations
-
-**Current Issue**: The `handleAgeVerification` function treats login pages as failures:
-```typescript
-if (finalUrl.includes('login')) {
-  throw new Error(`Age verification failed - still on auth page: ${finalUrl}`);
-}
-```
-
-**Recommended Approach**:
-1. **Treat login page as partial success** - Age verification was bypassed successfully
-2. **Adjust expectations for CI environment** - Geographic restrictions are normal behavior
-3. **Document limitations** - Overseas IP access has inherent restrictions
-
-#### Debugging Geographic Issues
-
-When tests fail in CI but pass locally, check for:
-1. **Language differences** in age verification pages
-2. **Additional authentication requirements** for overseas IPs
-3. **Different redirect behavior** based on geographic location
-4. **Content availability restrictions** by region
-
-Use the debug workflow (`.github/workflows/debug-ci-environment.yml`) to analyze:
-- Actual DOM structure in CI environment
-- Geographic-specific page variations
-- Authentication flow differences
-
-## VPN Integration for Japan IP Testing
-
-### Overview
-
-To address geographic IP restrictions in CI environments, a VPN integration has been implemented using Gluetun and ProtonVPN Free tier.
-
-**VPN Usage Scope**: VPN is specifically used for FANZA-related tests only, as these sites display different content (Japanese vs English) based on geographic location. Other sites (Amazon, DLsite, BookWalker, etc.) provide consistent content regardless of IP location and therefore do not require VPN.
-
-### Setup Instructions
-
-#### 1. ProtonVPN Account Setup
-1. Create a free account at [ProtonVPN](https://protonvpn.com/)
-2. Navigate to Account → [WireGuard configuration](https://account.proton.me/u/0/vpn/WireGuard)
-3. Generate a WireGuard configuration file
-4. Copy the `PrivateKey` value from the configuration
-
-#### 2. GitHub Secrets Configuration
-Add the following secret to your GitHub repository:
-
-```
-PROTONVPN_WIREGUARD_PRIVATE_KEY: [Your WireGuard PrivateKey in base64 format]
-```
-
-#### 3. Running VPN Tests
-
-**Manual Trigger:**
-```bash
-# Via GitHub Actions tab
-Actions → "testing-with-vpn" → "Run workflow"
-```
-
-**Branch-based Trigger:**
-```bash
-# Create/push to vpn-integration branch
-git checkout -b vpn-integration
-git push origin vpn-integration
-```
-
-#### 4. Test Coverage
-The VPN workflow specifically targets:
-- **Japan-restricted tests** (`npm run test:large:japan`):
-  - FANZA Video: `video.dmm.co.jp`
-  - FANZA Doujin: `dmm.co.jp/dc/doujin`
-  - FANZA Books: `book.dmm.co.jp`
-  - FANZA Anime: `video.dmm.co.jp/anime`
-  - Amazon JP: `amazon.co.jp`
-- IP verification and country detection
-- Proxy connectivity validation
-
-**Note**: Global tests (`npm run test:large:global`) for DLsite, BookWalker, Melonbooks, etc. run in the standard CI environment without VPN, as they provide consistent content regardless of geographic location.
-
-### Technical Implementation
-
-#### VPN Service Configuration
-```yaml
-services:
-  vpn:
-    image: qmcgaw/gluetun
-    env:
-      VPN_SERVICE_PROVIDER: protonvpn
-      VPN_TYPE: wireguard
-      WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
-      SERVER_COUNTRIES: Japan
-      FREE_ONLY: "on"
-      HTTPPROXY: "on"
-```
-
-#### Playwright Proxy Configuration
-Tests automatically route through the VPN using HTTP proxy:
-```bash
-export HTTP_PROXY=http://vpn:8888
-export HTTPS_PROXY=http://vpn:8888
-```
-
-### Benefits
-- **High Performance**: WireGuard protocol for faster speeds
-- **Geographic Accuracy**: Tests run with Japan IP addresses
-- **FANZA Compatibility**: Access Japanese age verification pages
-- **Content Consistency**: Ensures Japanese content only (no English fallbacks)
-- **Test Reliability**: Eliminates geographic content variations for FANZA sites
-- **Cost Effective**: Uses ProtonVPN's free tier
-- **CI Integration**: Automated testing without manual intervention
-
-### Limitations
-- **ProtonVPN Free**: Limited to 1 concurrent connection
-- **Speed Impact**: Potential latency increase due to VPN routing
-- **Dependency**: Requires external service availability
+共通指示は [AGENTS.md](AGENTS.md)、PR・リリース時の手順は
+[uni-deliveryスキル](.claude/skills/uni-delivery/SKILL.md)を参照してください。
+スキルの実体は `.claude/skills/uni-delivery/`、Codex用の
+`.agents/skills/uni-delivery` はそこへのシンボリックリンクです。
