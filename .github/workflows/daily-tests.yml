@@ -31,24 +31,6 @@ jobs:
 
   vpn-tests:
     runs-on: ubuntu-latest
-    services:
-      vpn:
-        image: qmcgaw/gluetun
-        options: >-
-          --cap-add=NET_ADMIN
-          --device /dev/net/tun
-        env:
-          VPN_SERVICE_PROVIDER: protonvpn
-          VPN_TYPE: wireguard
-          WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
-          SERVER_COUNTRIES: Japan
-          FREE_ONLY: "on"
-          HTTPPROXY: "on"
-          HTTPPROXY_STEALTH: "off"
-          HTTPPROXY_LOG: "on"
-        ports:
-          - 8888:8888  # HTTP proxy
-
     steps:
       - uses: actions/checkout@v5
       - uses: jdx/mise-action@v4
@@ -57,12 +39,40 @@ jobs:
       - name: Setup Playwright
         uses: ./.github/actions/setup-playwright
 
-      - name: Wait for VPN connection
+      # gluetun は日本の無料サーバーからランダムに1台選ぶため、選ばれたサーバーが
+      # 不調だとトンネルが通らない。service container だと unhealthy で即ジョブ失敗
+      # するので、step 内で起動し、繋がらなければコンテナを作り直して別サーバーを引く。
+      - name: Start VPN (retry with another server on failure)
+        env:
+          WIREGUARD_PRIVATE_KEY: ${{ secrets.PROTONVPN_WIREGUARD_PRIVATE_KEY }}
         run: |
-          echo "Waiting for VPN service to be ready..."
-          timeout 300 bash -c 'until curl -s --proxy http://localhost:8888 https://httpbin.org/ip; do sleep 5; done'
-          echo "✅ VPN proxy is responding"
-
+          for attempt in 1 2 3 4; do
+            echo "::group::VPN attempt ${attempt}"
+            docker rm -f vpn >/dev/null 2>&1 || true
+            docker run -d --name vpn \
+              --cap-add=NET_ADMIN --device /dev/net/tun \
+              -p 8888:8888 \
+              -e VPN_SERVICE_PROVIDER=protonvpn \
+              -e VPN_TYPE=wireguard \
+              -e WIREGUARD_PRIVATE_KEY \
+              -e SERVER_COUNTRIES=Japan \
+              -e FREE_ONLY=on \
+              -e HTTPPROXY=on \
+              -e HTTPPROXY_STEALTH=off \
+              -e HTTPPROXY_LOG=on \
+              qmcgaw/gluetun
+            if timeout 90 bash -c 'until curl -sf --max-time 10 --proxy http://localhost:8888 https://httpbin.org/ip; do sleep 5; done'; then
+              docker logs vpn 2>&1 | grep -E "Connecting to|Public IP" || true
+              echo "::endgroup::"
+              echo "✅ VPN proxy is responding (attempt ${attempt})"
+              exit 0
+            fi
+            docker logs vpn 2>&1 | tail -40
+            echo "::endgroup::"
+            echo "::warning::VPN attempt ${attempt} failed; retrying with another server"
+          done
+          echo "::error::VPN did not become ready after 4 attempts"
+          exit 1
 
       - name: Run Japan-restricted tests through VPN
         id: large-japan-tests
