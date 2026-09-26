@@ -84,3 +84,29 @@ VPNで日本IPになっても、上記のデータセンターIPブロックは�
 ## 関連
 
 - Amazon は別要因（ボット検出/CAPTCHA）で監視対象外。`docs/amazon-vpn-test-investigation.md` 参照。
+
+### WireGuard設定の有効期限切れ（年1回の予期された失敗）
+
+ProtonVPNのWireGuard設定には**有効期限（1年）**がある。期限が切れると、
+Proton側で鍵が無効になり、`vpn-tests` がテスト実行前に失敗する。`large-tests` は通る。
+
+症状（2026-09-26 に発生）:
+
+- Gluetunのログで `Connecting to <IP>:51820` の後、
+  `PMTUD failed with both ICMP and TCP` や DNS (`1.1.1.1:853`) の
+  `connection reset by peer` が出て、ヘルスチェックが通らない。
+- 接続先サーバーを変えても、すべてのサーバーで同じように失敗する。
+  特定の1台だけが失敗する場合は、サーバー側の不調を疑う。
+
+復旧手順:
+
+1. [Proton AccountのWireGuard](https://account.proton.me/vpn/WireGuard) を開き、
+   設定 `uni` の有効期限を確認する。
+2. 期限が切れていれば、`uni` を展開して「延長」を押す。延長しても鍵は変わらないので、
+   GitHub Secretの更新は不要。
+3. 延長できない場合や、`uni` が失効済みの場合は、日本の無料サーバー向けに設定を作り直す。
+   新しいPrivateKeyを `PROTONVPN_WIREGUARD_PRIVATE_KEY` に登録する。
+4. `gh workflow run daily-tests.yml --repo motoso/uni` で再実行し、`vpn-tests` が通ることを確認する。
+   期限切れで作成された監視issueは、原因を書いて閉じる。
+
+現在の有効期限: **2027-09-27**。延長したら、この日付を更新する。
