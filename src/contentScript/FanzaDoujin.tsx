@@ -7,6 +7,8 @@ import { fanzaDoujinSite } from "../sites/fanzaDoujin";
  * FANZAのページを開いたときに実行される
  */
 class FanzaDoujin extends DetailContentScript<FanzaDoujinScrapedData> {
+  protected readonly waitForDynamicContent = true;
+
   protected readonly rootElementMountPoint = {
     target: () => document.getElementsByTagName("header")[0] ?? null,
     prepareTarget: (target: Element) => {

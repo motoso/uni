@@ -8,6 +8,7 @@ import { fanzaDoujinSite } from "./fanzaDoujin";
 import { fanzaVideoSite } from "./fanzaVideo";
 import { fc2ContentMarketSite } from "./fc2ContentMarket";
 import { melonbooksSite } from "./melonbooks";
+import { mgstageSite } from "./mgstage";
 import { surugayaSite } from "./surugaya";
 import { toranoanaSite } from "./toranoana";
 
@@ -30,4 +31,5 @@ export const productSiteRegistry = [
   bookWalkerSite,
   fc2ContentMarketSite,
   surugayaSite,
+  mgstageSite,
 ] as const;

@@ -7,6 +7,7 @@ import {
   waitForStaticContent,
   insertionTargets,
   isEnvironmentalIpBlock,
+  isTransientlyUnavailable,
 } from "./shared";
 
 staticSites.forEach(
@@ -19,6 +20,7 @@ staticSites.forEach(
     isStatic,
     requiresJapanIP,
     allowIpBlock,
+    transientUnavailableUrlPatterns,
   }) => {
     const tag = requiresJapanIP ? "@japan" : "@global";
     test.describe(`${tag} Site Monitoring - ${service} (Static)`, () => {
@@ -44,6 +46,15 @@ staticSites.forEach(
           test.skip(
             true,
             `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`,
+          );
+        }
+
+        if (
+          isTransientlyUnavailable(healthCheck, transientUnavailableUrlPatterns)
+        ) {
+          test.skip(
+            true,
+            `${service}: redirected to a known transient unavailability page (${healthCheck.finalUrl})`,
           );
         }
 
@@ -104,6 +115,15 @@ staticSites.forEach(
           );
         }
 
+        if (
+          isTransientlyUnavailable(healthCheck, transientUnavailableUrlPatterns)
+        ) {
+          test.skip(
+            true,
+            `${service} (Firefox): redirected to a known transient unavailability page (${healthCheck.finalUrl})`,
+          );
+        }
+
         if (!healthCheck.accessible) {
           throw new Error(
             `❌ [NETWORK_ERROR] ${service} (Firefox) is not accessible: HTTP ${healthCheck.httpStatus} - ${healthCheck.error || "Unknown error"}`,
@@ -143,13 +163,24 @@ staticSites.forEach(
       }) => {
         // CIのVPNデータセンターIPがCloudflareに403でブロックされた場合は挿入位置検証不能なのでskip
         // (環境要因。詳細: docs/monitoring-ip-block-limitation.md)
-        // allowIpBlockのサイトのみ追加のヘルスチェックを行い、それ以外は余計なHTTP往復を避ける
-        if (allowIpBlock) {
+        // 環境要因を明示したサイトのみ追加のヘルスチェックを行い、それ以外は余計なHTTP往復を避ける
+        if (allowIpBlock || transientUnavailableUrlPatterns?.length) {
           const healthCheck = await performHealthCheck(page, url);
           if (isEnvironmentalIpBlock(healthCheck, allowIpBlock)) {
             test.skip(
               true,
               `${service}: HTTP 403 — Cloudflare datacenter-IP block (environmental, not a structure change). See docs/monitoring-ip-block-limitation.md`,
+            );
+          }
+          if (
+            isTransientlyUnavailable(
+              healthCheck,
+              transientUnavailableUrlPatterns,
+            )
+          ) {
+            test.skip(
+              true,
+              `${service}: redirected to a known transient unavailability page (${healthCheck.finalUrl})`,
             );
           }
         }

@@ -77,8 +77,12 @@ jobs:
           CI: true
           SKIP_IP_INFO: true
 
+  report-failure:
+    needs: [large-tests, vpn-tests]
+    if: ${{ always() && (needs.large-tests.result == 'failure' || needs.vpn-tests.result == 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Parse test results and create detailed issue
-        if: failure() && (steps.large-global-tests.outcome == 'failure' || steps.large-japan-tests.outcome == 'failure')
         run: |
           # NOTE: peter-evans/create-issue-from-file は title を別入力で受け取り、
           # このファイルは本文(body)としてのみ使われる。先頭に title=/body= を書くと
@@ -87,14 +91,14 @@ jobs:
           echo "" >> issue.md
 
           # Check which test job failed
-          if [[ "${{ steps.large-global-tests.outcome }}" == "failure" ]]; then
+          if [[ "${{ needs.large-tests.result }}" == "failure" ]]; then
             echo "### ❌ Global Sites Test Failed" >> issue.md
             echo "- Test command: \`npm run test:large:global\`" >> issue.md
             echo "- Environment: Standard GitHub Actions (overseas IP)" >> issue.md
             echo "" >> issue.md
           fi
 
-          if [[ "${{ steps.large-japan-tests.outcome }}" == "failure" ]]; then
+          if [[ "${{ needs.vpn-tests.result }}" == "failure" ]]; then
             echo "### ❌ Japan-restricted Sites Test Failed" >> issue.md
             echo "- Test command: \`npm run test:large:japan\`" >> issue.md
             echo "- Environment: ProtonVPN (Japan IP)" >> issue.md
@@ -121,11 +125,10 @@ jobs:
           echo "- **Workflow Run**: ${{ github.run_id }}" >> issue.md
           echo "- **Timestamp**: $(date -u)" >> issue.md
           echo "- **Branch**: ${{ github.ref_name }}" >> issue.md
-          echo "- **Global Sites**: ${{ steps.large-global-tests.outcome }}" >> issue.md
-          echo "- **Japan Sites**: ${{ steps.large-japan-tests.outcome }}" >> issue.md
+          echo "- **Global Sites**: ${{ needs.large-tests.result }}" >> issue.md
+          echo "- **Japan Sites**: ${{ needs.vpn-tests.result }}" >> issue.md
 
       - name: Create issue
-        if: failure() && (steps.large-global-tests.outcome == 'failure' || steps.large-japan-tests.outcome == 'failure')
         uses: peter-evans/create-issue-from-file@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

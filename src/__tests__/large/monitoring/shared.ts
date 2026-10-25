@@ -1,4 +1,11 @@
-import { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { bypassDmmAgeCheckWithCookie } from "../../support/dmm-age-verification";
+
+export {
+  isEnvironmentalIpBlock,
+  isTransientlyUnavailable,
+  performHealthCheck,
+} from "../../support/monitoring-health-check";
 
 export interface SiteConfig {
   service: string;
@@ -17,42 +24,11 @@ export interface SiteConfig {
    *    詳細: docs/monitoring-ip-block-limitation.md
    */
   allowIpBlock?: boolean;
-}
-
-// HTTP 403 は STRUCTURE_ERROR ではなく NETWORK_ERROR（ページすら読めていない）。
-// allowIpBlock 指定サイトでは構造変更検知を諦め、CIのVPNデータセンターIPブロックという
-// 環境ノイズをテスト失敗ではなく skip に変換する。
-export function isEnvironmentalIpBlock(
-  healthCheck: { httpStatus: number | null },
-  allowIpBlock?: boolean,
-): boolean {
-  return !!allowIpBlock && healthCheck.httpStatus === 403;
-}
-
-// ヘルスチェック関数 - ネットワーク問題か構造問題かを判別
-export async function performHealthCheck(
-  page: Page,
-  url: string,
-): Promise<{
-  httpStatus: number | null;
-  accessible: boolean;
-  error?: string;
-}> {
-  try {
-    const response = await page.goto(url, { waitUntil: "commit" });
-    const status = response?.status() ?? null;
-
-    return {
-      httpStatus: status,
-      accessible: status ? status < 400 : false,
-    };
-  } catch (error) {
-    return {
-      httpStatus: null,
-      accessible: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  /**
+   * HTTP 200 でも商品ページを検証できない、既知の一時ページのURL断片。
+   * 例: サイト全体のメンテナンスページ。
+   */
+  transientUnavailableUrlPatterns?: string[];
 }
 
 // 年齢認証処理のヘルパー関数
@@ -72,47 +48,75 @@ export async function handleAgeVerification(page: Page): Promise<void> {
       console.log("🔞 Age verification page detected");
 
       // 年齢認証ボタンを試行 (supports both English for CI and Japanese for local VPN)
-      const ageCheckSelectors = [
-        // English prompts (GitHub Actions runs from the US and surfaces these)
-        "text=Agree",
-        "text=I Agree",
-        "text=Yes",
-        'button:has-text("Agree")',
-        'button:has-text("I Agree")',
-        'button:has-text("Yes")',
-        'a:has-text("Agree")',
-        'a:has-text("I Agree")',
-        'a:has-text("Yes")',
-        // Japanese prompts (local debugging from Japan VPN keeps working)
-        "text=はい",
-        'button:has-text("はい")',
-        'input[value="はい"]',
-        'a:has-text("はい")',
-      ];
+      // Keep candidates exact and scoped to controls. Generic text selectors such
+      // as `text=Yes` can match unrelated navigation or consent elements.
+      const ageCheckLabels = ["はい", "I Agree", "Agree", "Yes"] as const;
+      const ageCheckCandidates = ageCheckLabels.flatMap((label) => [
+        {
+          label,
+          locator: page
+            .getByRole("button", { name: label, exact: true })
+            .first(),
+        },
+        { label, locator: page.locator(`input[value="${label}"]`).first() },
+        {
+          label,
+          locator: page.getByRole("link", { name: label, exact: true }).first(),
+        },
+      ]);
+
+      let ageCheckButton: (typeof ageCheckCandidates)[number] | undefined;
+      try {
+        // The age-gate markup can be rendered asynchronously. Poll in
+        // selector order so the intended control wins, without leaving
+        // parallel waits running after one candidate has been selected.
+        await expect
+          .poll(
+            async () => {
+              ageCheckButton = undefined;
+              for (const candidate of ageCheckCandidates) {
+                if (await candidate.locator.isVisible()) {
+                  ageCheckButton = candidate;
+                  break;
+                }
+              }
+              return ageCheckButton;
+            },
+            { timeout: initialTimeout },
+          )
+          .toBeDefined();
+      } catch {
+        // No button appeared within the existing timeout; an automatic
+        // redirect may still complete below.
+        ageCheckButton = undefined;
+      }
 
       let buttonClicked = false;
-      for (const selector of ageCheckSelectors) {
-        try {
-          const button = page.locator(selector).first();
-          if (await button.isVisible({ timeout: 2000 })) {
-            console.log(`✅ Found age verification button: ${selector}`);
-            await button.click();
-            buttonClicked = true;
-            break;
-          }
-        } catch (error) {
-          // Continue to next selector
-          console.log(`❌ Button not found: ${selector}`);
-        }
+      if (ageCheckButton) {
+        console.log(
+          `✅ Found age verification button: ${ageCheckButton.label}`,
+        );
+        await ageCheckButton.locator.click();
+        buttonClicked = true;
       }
 
       if (!buttonClicked) {
-        console.log(
-          "❌ No age verification button found, checking for auto-redirect...",
-        );
-        // CI環境では自動リダイレクトがある場合を考慮してしばらく待機
-        if (isCI) {
-          await page.waitForTimeout(5000);
+        if (await bypassDmmAgeCheckWithCookie(page)) {
+          // The VPN occasionally returns the age-check shell without its
+          // controls. The monitoring target is the product DOM, so reproduce
+          // the accepted gate state and continue to the validated DMM rurl.
+          console.log(
+            "⚠️ Age verification controls unavailable; using DMM age cookie fallback",
+          );
+          console.log("✅ DMM age cookie fallback navigation completed");
+        } else {
+          console.log(
+            "❌ No age verification button or safe DMM redirect found, checking for auto-redirect...",
+          );
+          // CI環境では自動リダイレクトがある場合を考慮してしばらく待機
+          if (isCI) {
+            await page.waitForTimeout(5000);
+          }
         }
       } else {
         console.log("✅ Age verification button clicked");
@@ -650,6 +654,9 @@ export const staticSites: SiteConfig[] = [
     skipFirefox: false,
     requiresJapanIP: true, // Cloudflare blocks non-Japan IPs with HTTP 403
     allowIpBlock: true, // CIのVPNデータセンターIPもCloudflareに403でブロックされるため、403はskip扱い
+    transientUnavailableUrlPatterns: [
+      "https://cdn.suruga-ya.jp/maintenance/maintenance.html",
+    ],
   },
   {
     service: "Toranoana",
@@ -657,13 +664,13 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "header", // header where bar is inserted
       ".product-detail-desc-title span", // title
-      ".sub-circle .sub-p", // circle name
-      ".sub-name .sub-p", // author
+      ".product-detail-spec-table .product-detail-spec-alert > a[title]", // circle name
+      '.product-detail-spec-table a[name="spec-actor"]', // author
       ".product-detail-spec-table", // product info table
     ],
     isStatic: true,
     skipFirefox: false,
-    requiresJapanIP: false,
+    requiresJapanIP: true, // Overseas GitHub runners receive HTTP 503; Japan IP returns the product page
   },
 ];
 

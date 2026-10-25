@@ -1,3 +1,12 @@
+export interface MgstageScrapedData {
+  title: string;
+  url: string;
+  actors: string[];
+  label: string;
+  publishedAt: Date | null;
+  id: string;
+}
+
 export interface FanzaVideoScrapedData {
   title: string;
   url: string;

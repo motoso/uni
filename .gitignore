@@ -9,7 +9,10 @@ src/popup/popup.html
 # claude
 CLAUDE.local.md
 settings.local.json
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/uni-delivery/
 
 # playwright and testing
 playwright-report/

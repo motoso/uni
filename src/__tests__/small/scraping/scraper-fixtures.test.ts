@@ -7,6 +7,8 @@ import { scrapeDLsiteManiaxData } from "../../../scraping/dlsite-maniax-scraper"
 import { scrapeFanzaBooksData } from "../../../scraping/fanza-books-scraper";
 import { scrapeFanzaDoujinData } from "../../../scraping/fanza-doujin-scraper";
 import { scrapeFanzaVideoData } from "../../../scraping/fanza-video-scraper";
+import { fanzaVideoSite } from "../../../sites/fanzaVideo";
+import { fanzaVideoRegressions } from "./fixtures/fanza-video-regressions";
 import {
   amazonHtml,
   bookWalkerHtml,
@@ -50,6 +52,34 @@ function documentFromRealHtml(html: string, url: string): Document {
 }
 
 describe("scraper fixtures from real product HTML", () => {
+  test.each([
+    ["hnvr00136", "av", "HNVR-136"],
+    ["peep027", "amateur", "PEEP-027"],
+    ["smus044", "amateur", "SMUS-044"],
+  ] as const)(
+    "extracts the reported FANZA page %s without losing its title",
+    (id, section, productId) => {
+      const fixture = fanzaVideoRegressions[id];
+      const url = `https://video.dmm.co.jp/${section}/content/?id=${id}`;
+      expect(
+        fanzaVideoSite.matches.some((pattern) =>
+          url.startsWith(pattern.replace(/\*$/, "")),
+        ),
+      ).toBe(true);
+      const result = scrapeFanzaVideoData(
+        documentFromRealHtml(fixture.html, url),
+      );
+      expect(result).toMatchObject({
+        title: fixture.title,
+        url,
+        id: productId,
+      });
+      if (section === "amateur") {
+        expect(result?.actress).toEqual([fixture.title]);
+      }
+    },
+  );
+
   test("extracts FANZA Books details from captured product page", () => {
     const document = documentFromRealHtml(
       fanzaBooksHtml,

@@ -4,32 +4,36 @@
 
 一部のサイト（**Melonbooks / Surugaya**）は、**GitHub Actions のどのIPからも安定してアクセスできない**。
 
-| 接続元 | 結果 |
-|---|---|
-| 海外IP（`@global` 通常ジョブ、Wyoming等） | HTTP **403**（地理ブロック） |
+| 接続元                                               | 結果                                                                                             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 海外IP（`@global` 通常ジョブ、Wyoming等）            | HTTP **403**（地理ブロック）                                                                     |
 | 日本IP（`@japan` ProtonVPN無料版・データセンターIP） | HTTP **403**（Cloudflare のデータセンターIPブロック）。**断続的** — 割り当てIP次第で通る日もある |
-| 手元の日本住宅用IP | HTTP **200**（正常） |
+| 手元の日本住宅用IP                                   | HTTP **200**（正常）                                                                             |
 
 つまり 403 の原因は **HTMLの構造変更ではなく、アクセス元IPの素性（住宅用 vs データセンター）** にある。`requiresJapanIP: true`（VPN日本IPジョブへ移動）だけでは解決しない。データセンターIPである限り Cloudflare は地理に関係なく403を返す。
+
+Toranoana は別の地域制限パターンで、海外の GitHub Actions runner には HTTP **503**、日本の接続元には HTTP **200** を返す。このため `requiresJapanIP: true` とし、`@japan` の VPN ジョブで監視する。Toranoana の 503 は `allowIpBlock` では skip しない。日本 VPN でも到達できなくなった場合は、構造監視ができない異常として検知する。
 
 ## このリポジトリでの扱い
 
 `SiteConfig.allowIpBlock: true` を付けたサイトは、ヘルスチェックが **HTTP 403** を返したとき、テスト**失敗ではなく skip** する。
 
-- 実装: `src/__tests__/large/monitoring/shared.ts` の `isEnvironmentalIpBlock()`
-- 適用: `static-sites.test.ts` / `spa-sites.test.ts` の各テスト（selector検証 × Chromium/Firefox、および挿入位置検証）
+また、HTTP 200 でも商品ページから既知の一時停止ページへ転送された場合は、DOM 構造を検証できない。`SiteConfig.transientUnavailableUrlPatterns` に URL パターンを明示したサイトでは、最終 URL が一致したときも skip する。現在は Surugaya の `https://cdn.suruga-ya.jp/maintenance/maintenance.html` を対象にしている。
+
+- 実装: `src/__tests__/support/monitoring-health-check.ts` の `isEnvironmentalIpBlock()` / `isTransientlyUnavailable()`
+- 適用: 403 判定は `static-sites.test.ts` / `spa-sites.test.ts`、メンテナンス URL 判定は `static-sites.test.ts` の各テスト（selector検証 × Chromium/Firefox、および挿入位置検証）
 - 現在 `allowIpBlock: true` のサイト: **Melonbooks**, **Surugaya**
 
-判断の根拠: **403 は `NETWORK_ERROR`（ページすら読めていない）であって `STRUCTURE_ERROR`（HTML構造の変更）ではない**。構造監視という本来の目的に対して 403 はノイズなので、200 が返ったときだけ selector を検証し、403 のときは skip する。
+判断の根拠: **403 や既知のメンテナンスページは、商品ページの `STRUCTURE_ERROR`（HTML構造の変更）ではない**。構造監視という本来の目的に対してこれらはノイズなので、商品ページを取得できたときだけ selector を検証する。
 
 ## ⚠️ リスク（今後の調査で必ず踏まえること）
 
 この skip は **以下のケースも黙って見逃す**:
 
 1. サイトが**永続的に**我々をブロックするようになった場合（一時的なIPブロックと区別できない）。
-2. **403 の裏でHTML構造が変わっていた**場合（403で skip するため selector 検証に到達しない）。
+2. **403 やメンテナンスページの裏でHTML構造が変わっていた**場合（skip するため selector 検証に到達しない）。
 
-したがって、**403 が継続するサイトについては、日本の住宅用IP（手元環境）から手動でアクセスし、selector が現行のままか確認すること**。CIの skip は「構造OK」を意味しない。
+したがって、**403 またはメンテナンス転送が継続するサイトについては、日本の住宅用IP（手元環境）から手動でアクセスし、selector が現行のままか確認すること**。CIの skip は「構造OK」を意味しない。
 
 ## 手動確認の例
 
@@ -42,7 +46,67 @@ curl -s -o /dev/null -w "Melonbooks HTTP: %{http_code}\n" \
 
 200 が返ったら、ブラウザ/Playwright で実際のDOMを開き、`shared.ts` の該当 `selectors` が存在するか確認する。
 
+## CIと手元でDOMが異なる場合
+
+接続元によって年齢認証の言語、ログイン要求、リダイレクト先が変わる場合がある。
+FANZAでは日本語・英語の年齢認証ページが観測されている。過去のボタン名や
+特定runnerの所在地を前提にせず、失敗した環境で最終URLと実DOMを確認する。
+
+現行の `handleAgeVerification()`（`src/__tests__/large/monitoring/shared.ts`）は
+年齢認証・ログインページに残った場合に失敗とする。ログインページに到達しても
+商品DOMを検証したことにはならない。環境要因を切り分け、スクレイピング成功と区別する。
+
+調査時は失敗したサイト・テストに絞る。抽出済みの失敗は `npm run test:failed-only`、
+直接指定する場合は `npm run test:large -- --grep "<test pattern>"` を使う。
+対象を変更した場合は、その変更を検証するテストも実行する。
+
+[Debug CI Environment](../.github/workflows/debug-ci-environment.yml) は手動実行用。
+`debug_target` でサイト、`test_type` で調査対象を選ぶ。`test_pattern` を指定すると
+そちらが優先される。利用できる選択肢と実行内容はworkflowを参照する。
+このworkflowはVPNを設定しないため、日本IPでの再現確認には別途適切な接続元が必要。
+
+既存の `fanza-debug.test.ts` / `amazon-debug.test.ts` と実行ログ・スクリーンショットを
+使い、最終URL、HTML、ボタン要素、selectorの成否を調べる。
+通常の `playwright.config.ts` のテスト対象を狭める必要はない。
+
+## VPN監視の設定
+
+[Daily Tests](../.github/workflows/daily-tests.yml) は通常接続の `@global` と
+日本VPN経由の `@japan` を分けて実行する。サイトの分類は `shared.ts` の
+`requiresJapanIP` を参照する。VPN対象はFANZAに限定しない。
+
+VPNはGluetun / ProtonVPNを使用する。設定時はProtonVPNでWireGuard設定を生成し、
+PrivateKeyをGitHub Secret `PROTONVPN_WIREGUARD_PRIVATE_KEY` に保存する。
+接続設定・プロキシのポートと環境変数はworkflowを参照する。
+日次以外に実行するときは `Daily Tests (Large & VPN)` を手動実行する。
+VPNで日本IPになっても、上記のデータセンターIPブロックは残り得る。
+
 ## 関連
 
-- 地理的IP制限の背景は `CLAUDE.md`（CI環境と手元環境の違い）も参照。
 - Amazon は別要因（ボット検出/CAPTCHA）で監視対象外。`docs/amazon-vpn-test-investigation.md` 参照。
+
+### WireGuard設定の有効期限切れ（年1回の予期された失敗）
+
+ProtonVPNのWireGuard設定には**有効期限（1年）**がある。期限が切れると、
+Proton側で鍵が無効になり、`vpn-tests` がテスト実行前に失敗する。`large-tests` は通る。
+
+症状（2026-09-26 に発生）:
+
+- Gluetunのログで `Connecting to <IP>:51820` の後、
+  `PMTUD failed with both ICMP and TCP` や DNS (`1.1.1.1:853`) の
+  `connection reset by peer` が出て、ヘルスチェックが通らない。
+- 接続先サーバーを変えても、すべてのサーバーで同じように失敗する。
+  特定の1台だけが失敗する場合は、サーバー側の不調を疑う。
+
+復旧手順:
+
+1. [Proton AccountのWireGuard](https://account.proton.me/vpn/WireGuard) を開き、
+   設定 `uni` の有効期限を確認する。
+2. 期限が切れていれば、`uni` を展開して「延長」を押す。延長しても鍵は変わらないので、
+   GitHub Secretの更新は不要。
+3. 延長できない場合や、`uni` が失効済みの場合は、日本の無料サーバー向けに設定を作り直す。
+   新しいPrivateKeyを `PROTONVPN_WIREGUARD_PRIVATE_KEY` に登録する。
+4. `gh workflow run daily-tests.yml --repo motoso/uni` で再実行し、`vpn-tests` が通ることを確認する。
+   期限切れで作成された監視issueは、原因を書いて閉じる。
+
+現在の有効期限: **2027-09-27**。延長したら、この日付を更新する。

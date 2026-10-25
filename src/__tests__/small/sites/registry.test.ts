@@ -41,6 +41,7 @@ describe("productSiteRegistry", () => {
       "bookWalker",
       "fc2ContentMarket",
       "surugaya",
+      "mgstage",
     ]);
   });
 
