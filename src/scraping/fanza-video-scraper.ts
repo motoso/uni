@@ -43,7 +43,11 @@ export function scrapeFanzaVideoData(
     logger.debug(`Title selector failed: ${selector}`);
   }
 
-  const title = titleElement?.innerText?.replace(/【.*】/, "").trim() || "";
+  // 販促表示だけを除き、作品名の【VR】や【8KVR】などは残す。
+  const title =
+    titleElement?.innerText
+      ?.replace(/【(?:独占|[^】]*セール[^】]*)】/g, "")
+      .trim() || "";
   const url = document.location.href;
 
   if (!title) {
@@ -112,7 +116,7 @@ export function scrapeFanzaVideoData(
   };
 
   // 出演者を取得（複数の場合は配列で）
-  const actressText = getValueByKey("出演者");
+  const actressText = getValueByKey("出演者") || getValueByKey("名前");
   const actress = actressText
     ? actressText
         .split(/[,、]/)

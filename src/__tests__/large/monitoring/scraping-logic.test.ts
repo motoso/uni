@@ -58,6 +58,28 @@ async function runInjectedScraper<T>(
 
 // FANZA Video専用のスクレイピングロジックテスト
 test.describe("FANZA Video Scraping Logic", () => {
+  for (const { section, id, title } of [
+    { section: "av", id: "hnvr00136", title: null },
+    { section: "amateur", id: "peep027", title: "ひとみ" },
+    { section: "amateur", id: "smus044", title: "ハルナ" },
+  ]) {
+    test(`extracts reported product ${id} @japan`, async ({ page }) => {
+      const url = `https://video.dmm.co.jp/${section}/content/?id=${id}`;
+      await page.goto(url);
+      await handleAgeVerification(page);
+      await page.locator("table.text-xs.shrink").waitFor();
+      const result = await runInjectedScraper(page, scrapeFanzaVideoData);
+      expect(result.url).toBe(url);
+      expect(result.id).toBeTruthy();
+      if (title) {
+        expect(result.title).toBe(title);
+        expect(result.actress).toEqual([title]);
+      } else {
+        expect(result.title).toMatch(/^【VR】.+【8KVR】$/);
+      }
+    });
+  }
+
   const siteConfig = spaSites.find((site) => site.service === "FANZA Video");
 
   test("should successfully run FANZA Video scraping logic", async ({
