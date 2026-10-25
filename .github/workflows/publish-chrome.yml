@@ -22,7 +22,6 @@ jobs:
 
     env:
       CHROME_EXTENSION_ID: jdihchpmnchcjigdmecmjieeanhcfbpm
-      CHROME_WEB_STORE_SCOPE: https://www.googleapis.com/auth/chromewebstore
 
     steps:
       - name: Checkout
@@ -48,17 +47,15 @@ jobs:
           CHROME_PUBLISHER_ID: op://Web/uni/CHROME_PUBLISHER_ID
           CHROME_SERVICE_ACCOUNT_JSON: op://Web/uni/CHROME_SERVICE_ACCOUNT_JSON
 
-      - name: Authenticate to Google Cloud
-        id: google_auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          credentials_json: ${{ steps.load_secrets.outputs.CHROME_SERVICE_ACCOUNT_JSON }}
-          token_format: access_token
-          access_token_scopes: ${{ env.CHROME_WEB_STORE_SCOPE }}
+      - name: Authenticate to Chrome Web Store
+        id: chrome_auth
+        env:
+          CHROME_SERVICE_ACCOUNT_JSON: ${{ steps.load_secrets.outputs.CHROME_SERVICE_ACCOUNT_JSON }}
+        run: node .github/scripts/chrome-web-store-auth.mjs
 
       - name: Preflight Chrome Web Store access
         env:
-          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.chrome_auth.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
         run: |
           set -euo pipefail
@@ -87,9 +84,10 @@ jobs:
         run: npm run package:chrome
 
       - name: Upload to Chrome Web Store
+        id: upload
         if: github.event_name == 'release' || inputs.mode == 'publish'
         env:
-          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.chrome_auth.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
         run: |
           set -euo pipefail
@@ -116,11 +114,12 @@ jobs:
           fi
 
           echo "Chrome Web Store upload accepted (state: ${upload_state})."
+          echo "upload_state=${upload_state}" >> "$GITHUB_OUTPUT"
 
       - name: Wait for upload processing
-        if: github.event_name == 'release' || inputs.mode == 'publish'
+        if: steps.upload.outputs.upload_state == 'IN_PROGRESS'
         env:
-          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.chrome_auth.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
         run: |
           set -euo pipefail
@@ -151,7 +150,7 @@ jobs:
       - name: Submit for review and publication
         if: github.event_name == 'release' || inputs.mode == 'publish'
         env:
-          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.chrome_auth.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
         run: |
           set -euo pipefail
@@ -185,7 +184,7 @@ jobs:
       - name: Report Chrome Web Store status
         if: github.event_name == 'release' || inputs.mode == 'publish'
         env:
-          ACCESS_TOKEN: ${{ steps.google_auth.outputs.access_token }}
+          ACCESS_TOKEN: ${{ steps.chrome_auth.outputs.access_token }}
           CHROME_PUBLISHER_ID: ${{ steps.load_secrets.outputs.CHROME_PUBLISHER_ID }}
         run: |
           set -euo pipefail

@@ -52,6 +52,7 @@ uni-chrome-web-store@PROJECT_ID.iam.gserviceaccount.com
 ```
 
 Chrome Web Storeに対する権限はGoogle Cloud IAMではなく、次の手順でDeveloper Dashboardから付与します。
+workflowはJSON鍵でJWTへ署名し、Google OAuthへ直接交換して短期アクセストークンを取得します。IAM Credentials APIやService Account Token Creatorロールは不要で、認証用JSONファイルも作成しません。
 
 ### 4. Chrome Web Storeのpublisherへ登録する
 
@@ -141,11 +142,18 @@ GitHub Actionsの`Publish Chrome Extension`を手動実行し、`mode`で`valida
 
 通常は、バージョンを更新したGitHub Releaseをpublishすると公開処理が自動実行されます。手動で公開する必要がある場合に限り、`mode`で`publish`を明示的に選択してください。同じバージョンを再アップロードすることはできません。
 
-リリースに紐づく失敗ジョブを再実行する場合は、次のコマンドを使います。
+workflowを変更せず一時的なエラーだけを再試行する場合は、次のコマンドを使います。
 
 ```bash
 gh run rerun RUN_ID --failed --repo motoso/uni
 gh run watch RUN_ID --repo motoso/uni --exit-status
+```
+
+workflowを修正した場合、過去のジョブの再実行は元のコミットの定義を使うため修正が反映されません。修正をmainへマージ後、次のように更新済みworkflowを実行します。最初にvalidateの成功を確認し、その後publishを実行してください。
+
+```bash
+gh workflow run publish-chrome.yml --repo motoso/uni --ref main -f mode=validate
+gh workflow run publish-chrome.yml --repo motoso/uni --ref main -f mode=publish
 ```
 
 次のステップが成功したことを確認します。
