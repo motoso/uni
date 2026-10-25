@@ -11,6 +11,7 @@ export const fanzaVideoSite = defineProductSite({
   matches: [
     "https://www.dmm.co.jp/digital/videoa/-/detail/=/*",
     "https://video.dmm.co.jp/av/content/*",
+    "https://video.dmm.co.jp/amateur/content/*",
   ],
   productTypes: ["film"],
   contentScriptEntry: "fanzaVideo",
