@@ -3,6 +3,7 @@
  */
 
 export { scrapeFanzaVideoData } from "./fanza-video-scraper";
+export { scrapeMgstageData } from "./mgstage-scraper";
 export { scrapeFanzaDoujinData } from "./fanza-doujin-scraper";
 export { scrapeFanzaBooksData } from "./fanza-books-scraper";
 export { scrapeFanzaAnimeData } from "./fanza-anime-scraper";
@@ -27,6 +28,7 @@ export type {
   FanzaVideoScrapedData,
   Fc2ContentMarketScrapedData,
   MelonbooksScrapedData,
+  MgstageScrapedData,
   SurugayaScrapedData,
   ToranoanaScrapedData,
 } from "./types";

@@ -9,6 +9,7 @@ export const AcceptedService = {
   fanzaAnime: "FANZA（アニメ）",
   dmmDoujinBasket: "DMM同人カート", // 新しいサービスタイプを追加
   fc2ContentMarket: "FC2コンテンツマーケット",
+  mgstage: "MGS動画",
   dlsite: "DLsite",
   dlsiteManiax: "DLsiteManiax",
   amazon: "Amazon",
