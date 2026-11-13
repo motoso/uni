@@ -26,19 +26,43 @@ export function scrapeDLsiteBooksData(
 
     // 【】で囲まれた部分を削除（非貪欲マッチで複数の【】に対応）
     // 例: "【電子単行本】タイトル【18禁】" → "タイトル"
-    const title = titleElement.innerText.replace(/【.*?】/g, "").trim();
+    const title = (titleElement.textContent || "")
+      .replace(/【.*?】/g, "")
+      .trim();
     const url = document.location.href;
+
+    // DLsite's redesigned product pages use labelled definition-list items.
+    const productInfoItems = document.querySelectorAll?.(
+      ".c-productInfo__item",
+    );
+    const getProductInfoCell = (label: string): HTMLElement | null => {
+      const item = Array.from(productInfoItems || []).find(
+        (item) => item.querySelector("dt")?.textContent?.trim() === label,
+      );
+      return item?.querySelector<HTMLElement>("dd") || null;
+    };
 
     const table = document.getElementById("work_maker");
     const outlineTable = document.getElementById("work_outline");
 
-    if (!table || !outlineTable) return null;
+    if ((!table || !outlineTable) && !productInfoItems?.length) return null;
 
     // Helper function to get element from table if left header matches
     const getElemIfExists = (
       leftHeaderStr: string,
-      sourceTable: HTMLElement,
+      sourceTable: HTMLElement | null,
     ): string | null => {
+      const cell = getProductInfoCell(leftHeaderStr);
+      if (cell) {
+        return (
+          cell
+            .querySelector(".c-productInfo__makerName")
+            ?.textContent?.trim() ||
+          cell.textContent?.trim() ||
+          null
+        );
+      }
+      if (!sourceTable) return null;
       const filtered = [...(sourceTable as HTMLTableElement).rows].filter(
         (row) => row.cells[0].innerText.trim() === leftHeaderStr,
       );
