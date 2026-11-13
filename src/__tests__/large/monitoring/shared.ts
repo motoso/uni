@@ -581,8 +581,9 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "#header", // header where bar is inserted
       "#work_name", // title
-      "#work_maker", // maker/circle table
-      "#work_outline", // product details outline table
+      ".c-productInfo__makerName", // maker/circle link
+      ".c-productInfo__item dt", // labelled product details
+      ".c-productInfo__item dd", // product detail values
     ],
     isStatic: true,
     skipFirefox: false,
@@ -595,8 +596,9 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "#header", // header where bar is inserted
       "#work_name", // title
-      "#work_maker", // maker/circle table
-      "#work_outline", // product details outline table
+      ".c-productInfo__makerName", // maker/circle link
+      ".c-productInfo__item dt", // labelled product details
+      ".c-productInfo__item dd", // product detail values
     ],
     isStatic: true,
     skipFirefox: false,
@@ -622,8 +624,9 @@ export const staticSites: SiteConfig[] = [
     selectors: [
       "#header", // header where bar is inserted
       "#work_name", // title
-      "#work_maker", // maker/circle table
-      "#work_outline", // product details outline table
+      ".c-productInfo__makerName", // maker/circle link
+      ".c-productInfo__item dt", // labelled product details
+      ".c-productInfo__item dd", // product detail values
     ],
     isStatic: true,
     skipFirefox: false,

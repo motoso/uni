@@ -25,6 +25,17 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
     const title = titleElement.textContent?.trim() || "";
     const url = document.location?.href || "";
 
+    // DLsite's redesigned product pages use labelled definition-list items.
+    const productInfoItems = document.querySelectorAll?.(
+      ".c-productInfo__item",
+    );
+    const getProductInfoCell = (label: string): HTMLElement | null => {
+      const item = Array.from(productInfoItems || []).find(
+        (item) => item.querySelector("dt")?.textContent?.trim() === label,
+      );
+      return item?.querySelector<HTMLElement>("dd") || null;
+    };
+
     const table = document.getElementById("work_maker");
     const outlineTable = document.getElementById("work_outline");
 
@@ -33,6 +44,15 @@ export function scrapeDLsiteData(document: Document): DLsiteScrapedData | null {
       leftHeaderStr: string,
       sourceTable: HTMLElement | null,
     ): string | null => {
+      const cell = getProductInfoCell(leftHeaderStr);
+      if (cell)
+        return (
+          cell
+            .querySelector(".c-productInfo__makerName")
+            ?.textContent?.trim() ||
+          cell.textContent?.trim() ||
+          null
+        );
       if (!sourceTable) return null;
 
       const rows = Array.from((sourceTable as HTMLTableElement).rows);

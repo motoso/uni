@@ -32,16 +32,30 @@ export function scrapeDLsiteManiaxData(
     const title = normalizeText(titleElement.textContent);
     const url = document.location?.href || "";
 
+    // DLsite's redesigned product pages use labelled definition-list items.
+    const productInfoItems = document.querySelectorAll?.(
+      ".c-productInfo__item",
+    );
+    const getProductInfoCell = (label: string): HTMLElement | null => {
+      const item = Array.from(productInfoItems || []).find(
+        (item) => item.querySelector("dt")?.textContent?.trim() === label,
+      );
+      return item?.querySelector<HTMLElement>("dd") || null;
+    };
+
     const table = document.getElementById("work_maker");
     const outlineTable = document.getElementById("work_outline");
 
-    if (!table || !outlineTable) return null;
+    if ((!table || !outlineTable) && !productInfoItems?.length) return null;
 
     // Helper function to get element from table if left header matches
     const getCellIfExists = (
       leftHeaderStr: string,
-      sourceTable: HTMLElement,
-    ): HTMLTableCellElement | null => {
+      sourceTable: HTMLElement | null,
+    ): HTMLElement | null => {
+      const cell = getProductInfoCell(leftHeaderStr);
+      if (cell) return cell;
+      if (!sourceTable) return null;
       const rows = Array.from((sourceTable as HTMLTableElement).rows);
       const filtered = rows.filter(
         (row) => normalizeText(row.cells[0]?.textContent) === leftHeaderStr,
@@ -54,7 +68,7 @@ export function scrapeDLsiteManiaxData(
 
     const getElemIfExists = (
       leftHeaderStr: string,
-      sourceTable: HTMLElement,
+      sourceTable: HTMLElement | null,
     ): string | null => {
       const cell = getCellIfExists(leftHeaderStr, sourceTable);
       return cell ? normalizeText(cell.textContent) : null;
@@ -62,7 +76,7 @@ export function scrapeDLsiteManiaxData(
 
     const getLinkedNamesIfExists = (
       leftHeaderStr: string,
-      sourceTable: HTMLElement,
+      sourceTable: HTMLElement | null,
     ): string[] => {
       const cell = getCellIfExists(leftHeaderStr, sourceTable);
       if (!cell) return [];
@@ -88,8 +102,12 @@ export function scrapeDLsiteManiaxData(
     // Extract circle name (remove follow button text and additional UI text)
     const circleName =
       normalizeText(
-        getCellIfExists("サークル名", table)?.querySelector(".maker_name a")
-          ?.textContent,
+        (
+          getProductInfoCell("サークル名")?.querySelector(
+            ".c-productInfo__makerName",
+          ) ||
+          getCellIfExists("サークル名", table)?.querySelector(".maker_name a")
+        )?.textContent,
       ) || "";
 
     const eventName = getElemIfExists("イベント", outlineTable);
