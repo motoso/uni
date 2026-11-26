@@ -17,7 +17,7 @@
 | サイズ | ディレクトリ | 実行コマンド | 制約 | 適用対象 |
 |---|---|---|---|---|
 | Small | `src/__tests__/small/` | `npm run test:small` | 単一プロセス。network / FS / 実ブラウザ / 外部 API なし | Product の placeholder 展開、タイトル正規化、popup の正規化、scraper の純粋ロジック |
-| Medium | `src/__tests__/medium/` | 未採用 | 単一マシン。localhost / fixture / 実ブラウザ可。実外部サイトなし | 将来の拡張機能 UI 統合、ローカル fixture HTML に対する ContentScript 検証 |
+| Medium | `src/__tests__/medium/` | `npm run test:medium` | 単一マシン。localhost / fixture / 実ブラウザ可。実外部サイトなし | 本番ビルドの ContentScript 起動、バックグラウンドとの通信、バナー表示 |
 | Large | `src/__tests__/large/` | `npm run test:large*` | 実外部サイト / VPN / 地理差あり | サイト監視、実 DOM セレクター検証、年齢認証・地域差の監視 |
 
 ## 実行コマンド
@@ -26,6 +26,7 @@
 npm test                    # PR-safe: Small のみ
 npm run test:pr             # npm test と同じ。PR 前の高速確認
 npm run test:small          # Jest unit tests
+npm run test:medium         # Chrome production build + Playwright Chromium
 npm run test:all            # Small -> Large。外部サイトまで明示的に確認する
 npm run test:large          # Playwright monitoring tests
 npm run test:large:global   # VPN 不要の外部サイト監視
@@ -43,9 +44,12 @@ npm run test:failed-only    # 抽出済みの失敗 Large テストだけ再実�
 | ContentScript の DOM 挿入位置 | Medium 化できるなら fixture HTML で検証。実サイト差分は Large で監視 |
 | 年齢認証、地域差、サイト構造監視 | Large。修正前に実 HTML を確認し、想像で selector を書かない |
 
+Medium をローカル実行する前に `npx playwright install chromium` を実行する。Playwright の拡張機能読み込みは Chromium の永続コンテキストを使うため、このテストは Chrome 用ビルドを対象にする。Firefox では既存の Large が実サイトの DOM を監視する。
+
 ## CI ポリシー
 
 - PR / push の高速 CI は Small を最速で実行する
+- Chrome のビルド後、保存した BookWalker と FANZA Video の DOM でバナー表示を確認する
 - Large は日次 CI と手動 workflow で実行する
 - Japan-restricted な Large は VPN 経由で実行する
 - Large の 403 / ログイン要求 / 地域差は、失敗として扱う前に環境要因かを切り分ける
