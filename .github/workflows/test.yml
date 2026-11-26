@@ -23,3 +23,7 @@ jobs:
         run: npm run test:small
       - name: Build Chrome extension
         run: npm run build:chrome
+      - name: Install Chromium for Medium tests
+        run: npx playwright install --with-deps chromium
+      - name: Run Medium tests against the Chrome extension
+        run: npx playwright test --config=playwright.medium.config.ts

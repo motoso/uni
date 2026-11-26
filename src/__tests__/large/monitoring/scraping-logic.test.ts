@@ -3,7 +3,6 @@ import { scrapeFanzaVideoData } from "../../../scraping/fanza-video-scraper";
 import { scrapeFanzaDoujinData } from "../../../scraping/fanza-doujin-scraper";
 import { scrapeFanzaBooksData } from "../../../scraping/fanza-books-scraper";
 import { scrapeAmazonData } from "../../../scraping/amazon-scraper";
-import { scrapeBookWalkerData } from "../../../scraping/bookwalker-scraper";
 import { scrapeDLsiteData } from "../../../scraping/dlsite-scraper";
 import { scrapeDLsiteBooksData } from "../../../scraping/dlsite-books-scraper";
 import { scrapeMelonbooksData } from "../../../scraping/melonbooks-scraper";
@@ -25,10 +24,7 @@ const allSites = [...staticSites, ...spaSites];
 // Provide module-level runtime dependencies in the browser global scope.
 const injectedScraperDependencies =
   "globalThis.__scraperErrors = [];" +
-  "globalThis.logger = { debug: () => {}, error: (...args) => globalThis.__scraperErrors.push(args.map((arg) => arg instanceof Error ? (arg.stack || arg.message) : String(arg)).join(' ')) };" +
-  // ts-jest currently rewrites the BookWalker import to this module variable.
-  // Replace this serialization shim with a real bundled ContentScript test: see the follow-up issue.
-  "globalThis._halfWidth = { toHalfWidth: (value, pattern) => value.replace(pattern, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0)) };";
+  "globalThis.logger = { debug: () => {}, error: (...args) => globalThis.__scraperErrors.push(args.map((arg) => arg instanceof Error ? (arg.stack || arg.message) : String(arg)).join(' ')) };";
 
 async function runInjectedScraper<T>(
   page: Page,
@@ -232,43 +228,6 @@ test.describe("Amazon Scraping Logic", () => {
         `✓ Amazon Published Date: ${scrapingResult.publishedAt || "Not found"}`,
       );
     });
-  });
-});
-
-// BookWalker scraping logic test
-test.describe("BookWalker Scraping Logic", () => {
-  const siteConfig = staticSites.find((site) => site.service === "BookWalker");
-
-  test("should successfully run BookWalker scraping logic", async ({
-    page,
-    browserName,
-  }) => {
-    if (!siteConfig) return;
-
-    await page.goto(siteConfig.url);
-    if (siteConfig.hasAgeVerification) {
-      await handleAgeVerification(page);
-    }
-    await page.waitForLoadState("load");
-
-    const scrapingResult = await runInjectedScraper(page, scrapeBookWalkerData);
-
-    // スクレイピング結果を検証
-    expect(scrapingResult.title).toBeTruthy();
-    expect(scrapingResult.title.length).toBeGreaterThan(0);
-    expect(scrapingResult.url).toContain("bookwalker.jp");
-
-    console.log(`✓ BookWalker Title: ${scrapingResult.title}`);
-    console.log(
-      `✓ BookWalker Authors: ${scrapingResult.authors.join(", ") || "Not found"}`,
-    );
-    console.log(
-      `✓ BookWalker Publisher: ${scrapingResult.publisher || "Not found"}`,
-    );
-    console.log(`✓ BookWalker Label: ${scrapingResult.label || "Not found"}`);
-    console.log(
-      `✓ BookWalker Published Date: ${scrapingResult.publishedAt || "Not found"}`,
-    );
   });
 });
 

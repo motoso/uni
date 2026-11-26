@@ -21,6 +21,7 @@
     "test:pr": "npm run test:small",
     "test:all": "npm run test:small && npm run test:large",
     "test:small": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects=small",
+    "test:medium": "npm run build:chrome && playwright test --config=playwright.medium.config.ts",
     "test:large": "playwright test",
     "test:large:japan": "playwright test --grep \"@japan\"",
     "test:large:global": "playwright test --grep \"@global\"",
