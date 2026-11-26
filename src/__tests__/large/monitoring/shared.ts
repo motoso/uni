@@ -587,12 +587,11 @@ export const staticSites: SiteConfig[] = [
   },
   {
     service: "DLsiteBooks",
-    url: "https://www.dlsite.com/books/work/=/product_id/BJ02112599.html",
+    url: "https://www.dlsite.com/books/work/=/product_id/BJ01369709.html",
     selectors: [
       "#header", // header where bar is inserted
       "#work_name", // title
-      "#work_maker", // maker/circle table
-      "#work_outline", // product details outline table
+      "dl > .c-productInfo__item > dt + dd", // product details
     ],
     isStatic: true,
     skipFirefox: false,

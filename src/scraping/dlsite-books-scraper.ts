@@ -32,7 +32,33 @@ export function scrapeDLsiteBooksData(
     const table = document.getElementById("work_maker");
     const outlineTable = document.getElementById("work_outline");
 
-    if (!table || !outlineTable) return null;
+    if (!table || !outlineTable) {
+      const keys = document.querySelectorAll<HTMLElement>(
+        "dl > .c-productInfo__item > dt",
+      );
+      if (!keys.length) return null;
+
+      const findValue = (name: string) =>
+        [...keys]
+          .find((key) => key.textContent?.trim() === name)
+          ?.nextElementSibling;
+
+      const authors = [...(findValue("著者")?.querySelectorAll("a") ?? [])]
+        .map((author) => author.textContent?.trim() ?? "")
+        .filter(Boolean);
+      const publisher = findValue("出版社名")
+        ?.querySelector(".c-productInfo__makerName")
+        ?.textContent?.trim();
+
+      return {
+        title,
+        authors,
+        label: findValue("レーベル")?.textContent?.trim() ?? null,
+        publisher: publisher ?? "",
+        publishedAt: parsePublishedAt(findValue("販売日")?.textContent ?? null),
+        url,
+      };
+    }
 
     // Helper function to get element from table if left header matches
     const getElemIfExists = (
