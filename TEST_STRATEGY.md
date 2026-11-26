@@ -43,6 +43,12 @@ npm run test:failed-only    # 抽出済みの失敗 Large テストだけ再実�
 | ContentScript の DOM 挿入位置 | Medium 化できるなら fixture HTML で検証。実サイト差分は Large で監視 |
 | 年齢認証、地域差、サイト構造監視 | Large。修正前に実 HTML を確認し、想像で selector を書かない |
 
+### 実 HTML 由来の Small テスト
+
+スクレイパーの fixture テストは、保存した DOM を `linkedom` で読み込み、抽出結果を確認する。実装が参照する `document.location.href`、`table.rows`、`tr.cells` はテスト用ヘルパーで補う。
+
+現在の `jsdom` 27.1.0 は、Jest 30.2.0 と ts-jest 29.4.5 の構成では `parse5` を ESM として読み込めず、テスト開始前に失敗する。jsdom 31.0.1、Jest 30.5.2、ts-jest 29.4.15 の組み合わせでは、独立した最小テストで URL とテーブルの読み取りに成功した。ただし jsdom 31.0.1 がサポートする Node.js の範囲には、現在固定している 24.11.1 が含まれない。既存 fixture は現行構成で動作しているため `linkedom` を継続し、Node.js とテスト依存関係を更新する際に実 fixture で移行可否を再確認する。
+
 ## CI ポリシー
 
 - PR / push の高速 CI は Small を最速で実行する
