@@ -152,6 +152,31 @@ describe("scraper fixtures from real product HTML", () => {
     });
   });
 
+  test("extracts DLsite Books details from the new product layout", () => {
+    const url = "https://www.dlsite.com/books/work/=/product_id/BJ01369709.html";
+    const document = documentFromRealHtml(
+      `<h1 id="work_name"> Corrupted party～堕ちた乙女達～【デジタル特装版】 </h1>
+      <dl>
+        <div class="c-productInfo__item"><dt>著者</dt><dd><a>左藤空気</a></dd></div>
+        <div class="c-productInfo__item"><dt>出版社名</dt><dd><div><a class="c-productInfo__makerName">ジーオーティー</a><button>フォローする</button></div></dd></div>
+        <div class="c-productInfo__item"><dt>レーベル</dt><dd><a>GOT COMICS</a></dd></div>
+      </dl>
+      <dl>
+        <div class="c-productInfo__item"><dt>販売日</dt><dd><a>2024年4月30日</a></dd></div>
+      </dl>`,
+      url,
+    );
+
+    expect(scrapeDLsiteBooksData(document)).toEqual({
+      title: "Corrupted party～堕ちた乙女達～",
+      authors: ["左藤空気"],
+      label: "GOT COMICS",
+      publisher: "ジーオーティー",
+      publishedAt: new Date("2024-04-30"),
+      url,
+    });
+  });
+
   test("extracts DLsite Maniax details from captured product page", () => {
     const document = documentFromRealHtml(
       dlsiteManiaxHtml,

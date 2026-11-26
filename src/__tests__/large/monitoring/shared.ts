@@ -592,7 +592,7 @@ export const staticSites: SiteConfig[] = [
   },
   {
     service: "DLsiteBooks",
-    url: "https://www.dlsite.com/books/work/=/product_id/BJ02112599.html",
+    url: "https://www.dlsite.com/books/work/=/product_id/BJ01369709.html",
     selectors: [
       "#header", // header where bar is inserted
       "#work_name", // title
